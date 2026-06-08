@@ -1,4 +1,5 @@
 import { Routes, Route } from "react-router"; 
+import { useEffect } from "react";
 import Sidebar from "./components/Sidebar";
 import Header from "./components/Header";
 import WelcomeBanner from "./components/WelcomeBanner";
@@ -8,10 +9,26 @@ import GpaChart from "./components/GpaChart";
 import CreditsChart from "./components/CreditsChart";
 import MyFees from "./components/MyFees";
 import ContractPage from "./components/ContractPage"; 
-import ContractDetails from "./components/ContractDetails"; // 1. Import the new details page
+import ContractDetails from "./components/ContractDetails";
 import MyTranscript from "./components/MyTranscript"; 
 import MyRegistration from "./components/MyRegistration"; 
 import Login from "./components/authentication/Login"; 
+
+// Reset demo state on fresh page load (not soft navigation)
+function DemoReset() {
+  useEffect(() => {
+    // Only clear if this is a fresh load (not SPA navigation)
+    const isFreshLoad = sessionStorage.getItem('demo_initialized');
+    if (!isFreshLoad) {
+      // Clear demo data for fresh start
+      localStorage.removeItem('demo_paymentMade');
+      localStorage.removeItem('demo_installmentPlan');
+      localStorage.removeItem('demo_installmentPayments');
+      sessionStorage.setItem('demo_initialized', 'true');
+    }
+  }, []);
+  return null;
+}
 
 // Create a small component for your Dashboard content to keep the routes clean
 function DashboardHome() {
@@ -35,6 +52,7 @@ export default function App() {
 
       <Route path="/*" element={
         <div className="flex h-screen bg-gray-50 overflow-hidden">
+          <DemoReset />
           <Sidebar />
 
           <div className="flex flex-col flex-1 min-w-0 overflow-hidden">

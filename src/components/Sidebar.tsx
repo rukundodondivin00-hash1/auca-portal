@@ -10,6 +10,20 @@ export default function Sidebar() {
   const [isPinned, setIsPinned] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const location = useLocation();
+  const [hasContract, setHasContract] = useState(() => localStorage.getItem('demo_installmentPlan') !== null);
+
+  // Check and sync hasContract state
+  React.useEffect(() => {
+    const handleStorageChange = () => {
+      setHasContract(localStorage.getItem('demo_installmentPlan') !== null);
+    };
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('paymentUpdated', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('paymentUpdated', handleStorageChange);
+    };
+  }, []);
 
   const isExpanded = isPinned || isHovered;
 
@@ -85,13 +99,15 @@ export default function Sidebar() {
               isActive={location.pathname === '/my-fees'} 
               isExpanded={isExpanded} 
             />
-            <NavItem 
-              icon={<FileSignature size={20} />} 
-              label="Sign Contract" 
-              href="/contract" 
-              isActive={location.pathname === '/contract'} 
-              isExpanded={isExpanded} 
-            />
+            {!hasContract && (
+              <NavItem 
+                icon={<FileSignature size={20} />} 
+                label="Sign Contract" 
+                href="/contract" 
+                isActive={location.pathname === '/contract'} 
+                isExpanded={isExpanded} 
+              />
+            )}
             <NavItem 
               icon={<FileText size={20} />} 
               label="Contract Details" 

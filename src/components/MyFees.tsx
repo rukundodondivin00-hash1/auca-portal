@@ -1,12 +1,41 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Wallet, FileText, DollarSign } from 'lucide-react'; // Example icons
-import InitiatePaymentModal from '../components/InitiatePaymentModal';
+import { Wallet, FileText, DollarSign } from 'lucide-react';
 
 export default function MyFees() {
-  const [isPaymentModalOpen, setPaymentModalOpen] = useState(false);
-
+  const totalAmount = 566103;
+  
+  // Load paymentMade from localStorage
+  const getInitialPaymentMade = () => {
+    const stored = localStorage.getItem('demo_paymentMade');
+    return stored ? Number(stored) : 220000;
+  };
+  const [paymentMade, setPaymentMade] = useState(getInitialPaymentMade);
+  const remainingBalance = totalAmount - paymentMade;
+  
+  // Sync to localStorage when paymentMade changes (from other components)
+  useEffect(() => {
+    const handlePaymentUpdate = () => {
+      const stored = localStorage.getItem('demo_paymentMade');
+      if (stored) {
+        setPaymentMade(Number(stored));
+      }
+    };
+    
+    window.addEventListener('paymentUpdated', handlePaymentUpdate);
+    window.addEventListener('storage', handlePaymentUpdate);
+    
+    return () => {
+      window.removeEventListener('paymentUpdated', handlePaymentUpdate);
+      window.removeEventListener('storage', handlePaymentUpdate);
+    };
+  }, []);
+  
+  const paymentPercentage = Math.min(100, Math.round((paymentMade / totalAmount) * 100));
+  const requiredAmount = totalAmount * 0.5;
+  const isEligible = paymentMade >= requiredAmount;
+  
   return (
     <div className="p-6 space-y-6">
       {/* Header Section */}
@@ -27,8 +56,8 @@ export default function MyFees() {
           <CardContent className="p-4 flex justify-between items-center">
             <div>
               <p className="text-sm font-medium text-gray-500">Current Balance</p>
-              <h2 className="text-2xl font-bold text-blue-600">RWF 0</h2>
-              <p className="text-xs text-gray-400 mt-1">Negative = due, positive = credit</p>
+              <h2 className="text-2xl font-bold text-blue-600">RWF {remainingBalance.toLocaleString()}</h2>
+              <p className="text-xs text-gray-400 mt-1">Amount remaining to pay</p>
             </div>
             <div className="p-2 bg-blue-100 rounded text-blue-600">
               <Wallet size={20} />
@@ -40,9 +69,9 @@ export default function MyFees() {
         <Card className="border-l-4 border-l-green-500 shadow-sm">
           <CardContent className="p-4 flex justify-between items-center">
             <div>
-              <p className="text-sm font-medium text-gray-500">Amount Due</p>
-              <h2 className="text-2xl font-bold text-green-600">RWF 0</h2>
-              <p className="text-xs text-gray-400 mt-1">Owed when your balance is negative</p>
+              <p className="text-sm font-medium text-gray-500">Payment Progress</p>
+              <h2 className="text-2xl font-bold text-green-600">{paymentPercentage}%</h2>
+              <p className="text-xs text-gray-400 mt-1">{isEligible ? 'Eligible for contract' : 'Pay 50% to take contract'}</p>
             </div>
             <div className="p-2 bg-green-100 rounded text-green-600">
               <FileText size={20} />
@@ -54,15 +83,28 @@ export default function MyFees() {
         <Card className="border-l-4 border-l-orange-400 shadow-sm">
           <CardContent className="p-4 flex justify-between items-center">
             <div>
-              <p className="text-sm font-medium text-gray-500">Credit Balance</p>
-              <h2 className="text-2xl font-bold text-orange-500">RWF 0</h2>
-              <p className="text-xs text-gray-400 mt-1">Available when your balance is positive</p>
+              <p className="text-sm font-medium text-gray-500">Paid Amount</p>
+              <h2 className="text-2xl font-bold text-orange-500">RWF {paymentMade.toLocaleString()}</h2>
+              <p className="text-xs text-gray-400 mt-1">of {totalAmount.toLocaleString()} RWF total</p>
             </div>
             <div className="p-2 bg-orange-100 rounded text-orange-500">
               <DollarSign size={20} />
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Quick Pay Section - Removed payment button, now just display info */}
+      <div className="bg-white rounded-lg border shadow-sm p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold">Quick Payment</h3>
+          {!isEligible && (
+            <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded">Pay {(requiredAmount - paymentMade).toLocaleString()} RWF to become eligible</span>
+          )}
+        </div>
+        <p className="text-sm text-gray-500">
+          To make payments, use the "Pay Now" button on the dashboard. Your payment progress will update automatically.
+        </p>
       </div>
 
       {/* Fee Obligations Table Area */}
@@ -109,12 +151,6 @@ export default function MyFees() {
           </div>
         </div>
       </div>
-
-      {/* Render the Modal */}
-      <InitiatePaymentModal 
-        isOpen={isPaymentModalOpen} 
-        onClose={() => setPaymentModalOpen(false)} 
-      />
     </div>
   );
 }

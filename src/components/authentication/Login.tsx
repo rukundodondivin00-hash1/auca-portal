@@ -1,18 +1,82 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
+import axios from 'axios';
+
+// Mock student database with different payment scenarios
+const mockStudents: Record<string, {password: string; paymentMade: number; hasContract: boolean; studentName: string; studentId: string}> = {
+  "25306": { password: "password", paymentMade: 220000, hasContract: false, studentName: "Musengimana Fabrice", studentId: "25306" },
+  "25307": { password: "password", paymentMade: 300000, hasContract: true, studentName: "Ishimwe Alice", studentId: "25307" }, // Has contract, paid 53%
+  "25308": { password: "password", paymentMade: 566103, hasContract: false, studentName: "Nkundimana Bob", studentId: "25308" }, // Fully paid
+  "25309": { password: "password", paymentMade: 0, hasContract: false, studentName: "Uwimana Claire", studentId: "25309" }, // Not paid anything
+  "25310": { password: "password", paymentMade: 283051, hasContract: false, studentName: "Mugisha David", studentId: "25310" }, // Exactly 50% eligible
+};
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  
+  // New states for API handling
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  
   const navigate = useNavigate();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, you would validate credentials with your backend here.
-    // For now, this directly navigates the user to their dashboard.
-    navigate('/student-dashboard');
+    setIsLoading(true);
+    setErrorMessage(null);
+
+    try {
+      const response = await axios.post('http://localhost:8080/api/auth/login', {
+        username: email, 
+        password: password
+      });
+
+      const token = response.data.token || response.data.data?.token;
+
+      if (token) {
+        localStorage.setItem('jwt_token', token);
+        navigate('/student-dashboard');
+      } else {
+        throw new Error("No token");
+      }
+
+    } catch {
+      // Demo mode: Check mock students database
+      const student = mockStudents[email];
+      if (student && student.password === password) {
+        // Set demo data for this student
+        localStorage.setItem('jwt_token', `demo_token_${email}`);
+        localStorage.setItem('demo_studentId', student.studentId);
+        localStorage.setItem('demo_studentName', student.studentName);
+        
+        // Set initial payment state
+        localStorage.setItem('demo_paymentMade', String(student.paymentMade));
+        
+        // Set contract if exists
+        if (student.hasContract) {
+          const remaining = 566103 - student.paymentMade;
+          const installmentPlan = [
+            { month: "June", date: "30/06/2026", amount: Math.floor(remaining / 2), status: "Pending" },
+            { month: "July", date: "31/07/2026", amount: Math.ceil(remaining / 2), status: "Pending" }
+          ];
+          localStorage.setItem('demo_installmentPlan', JSON.stringify(installmentPlan));
+        } else {
+          localStorage.removeItem('demo_installmentPlan');
+        }
+        
+        // Clear any previous installment payments
+        localStorage.removeItem('demo_installmentPayments');
+        
+        navigate('/student-dashboard');
+      } else {
+        setErrorMessage("Invalid credentials. Demo IDs: 25306-25310 with password 'password'");
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -54,7 +118,6 @@ export default function Login() {
                 <div className="w-full h-full flex">
                   <div className="relative flex h-full w-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 text-slate-900 shadow-xl sm:p-8 lg:rounded-l-none lg:rounded-r-3xl dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50">
                     
-                    {/* Subtle inner gradient */}
                     <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.04),transparent_40%),radial-gradient(circle_at_bottom_left,rgba(14,165,233,0.02),transparent_40%)] dark:bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.08),transparent_40%),radial-gradient(circle_at_bottom_left,rgba(30,41,59,0.2),transparent_38%)]"></div>
                     
                     <div className="relative z-10 w-full flex-1 flex flex-col justify-center">
@@ -78,6 +141,14 @@ export default function Login() {
                         
                         <div className="mb-6 h-px bg-slate-200/80 dark:bg-slate-800/80"></div>
                         
+                        {/* Error Message Alert */}
+                        {errorMessage && (
+                          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg flex items-start gap-2 text-sm">
+                            <AlertCircle className="shrink-0 mt-0.5" size={16} />
+                            <p>{errorMessage}</p>
+                          </div>
+                        )}
+                        
                         <form onSubmit={handleLogin} className="space-y-5">
                           {/* Email Input */}
                           <div>
@@ -91,9 +162,10 @@ export default function Login() {
                                 type="text" 
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
+                                disabled={isLoading}
                                 required 
                                 placeholder="Enter your ID or email"
-                                className="h-12 w-full rounded-xl border border-slate-300 bg-slate-50 pl-12 pr-4 text-sm text-slate-900 transition-all placeholder:text-slate-400 focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-600/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:border-blue-500" 
+                                className="h-12 w-full rounded-xl border border-slate-300 bg-slate-50 pl-12 pr-4 text-sm text-slate-900 transition-all placeholder:text-slate-400 focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-600/20 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:border-blue-500" 
                               />
                             </div>
                           </div>
@@ -110,14 +182,16 @@ export default function Login() {
                                 type={showPassword ? "text" : "password"}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
+                                disabled={isLoading}
                                 required 
                                 placeholder="Enter your password"
-                                className="h-12 w-full rounded-xl border border-slate-300 bg-slate-50 pl-12 pr-12 text-sm text-slate-900 transition-all placeholder:text-slate-400 focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-600/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:border-blue-500" 
+                                className="h-12 w-full rounded-xl border border-slate-300 bg-slate-50 pl-12 pr-12 text-sm text-slate-900 transition-all placeholder:text-slate-400 focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-600/20 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:border-blue-500" 
                               />
                               <button 
                                 type="button" 
                                 onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                                disabled={isLoading}
+                                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 disabled:opacity-50 dark:hover:text-slate-200 transition-colors"
                               >
                                 {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                               </button>
@@ -132,10 +206,19 @@ export default function Login() {
 
                           <button 
                             type="submit" 
-                            className="group mt-2 w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-700 to-blue-600 px-4 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition-all hover:from-blue-600 hover:to-blue-500 active:scale-[0.98]"
+                            disabled={isLoading}
+                            className="group mt-2 w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-700 to-blue-600 px-4 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition-all hover:from-blue-600 hover:to-blue-500 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
                           >
-                            Sign In
-                            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                            {isLoading ? (
+                              <>
+                                <Loader2 className="h-5 w-5 animate-spin" /> Authenticating...
+                              </>
+                            ) : (
+                              <>
+                                Sign In
+                                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                              </>
+                            )}
                           </button>
 
                           <p className="pt-4 text-center text-sm text-slate-600 dark:text-slate-400">

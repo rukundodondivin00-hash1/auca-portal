@@ -1,42 +1,269 @@
-import React, { useState } from 'react';
-import { Upload, Camera, Download, AlertCircle, FileText, CheckCircle2, Lock, Unlock } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { AlertCircle, FileText, CheckCircle2, Lock, Unlock, FileSignature, Loader2, AlertTriangle } from 'lucide-react';
+import { Link } from 'react-router'; 
+import axios from 'axios';
 
 export default function ContractPage() {
-  // --- MOCK DATA ---
-  const studentName = "Rukundo Don Divin";
-  const studentId = "25306";
+  // Get student info from localStorage or use defaults
+  const studentName = localStorage.getItem('demo_studentName') || "Musengimana Fabrice";
+  const studentId = localStorage.getItem('demo_studentId') || "25306";
   const totalAmount = 566103;
-  const paymentMade = 220000;
+  
+  // Load paymentMade from localStorage or use default
+  const getInitialPaymentMade = () => {
+    const stored = localStorage.getItem('demo_paymentMade');
+    return stored ? Number(stored) : 220000;
+  };
+  const [paymentMade, setPaymentMade] = useState(getInitialPaymentMade);
+  
+  // Listen for payment updates from other components via custom event
+  useEffect(() => {
+    const handlePaymentUpdate = () => {
+      const stored = localStorage.getItem('demo_paymentMade');
+      if (stored) {
+        setPaymentMade(Number(stored));
+      }
+    };
+    
+    // Custom event for same-tab updates
+    window.addEventListener('paymentUpdated', handlePaymentUpdate);
+    // Storage event for cross-tab updates  
+    window.addEventListener('storage', handlePaymentUpdate);
+    
+    return () => {
+      window.removeEventListener('paymentUpdated', handlePaymentUpdate);
+      window.removeEventListener('storage', handlePaymentUpdate);
+    };
+  }, []);
   const remainingBalance = totalAmount - paymentMade;
   const credits = 116;
-  const currentDate = new Date().toLocaleDateString('en-GB'); // DD/MM/YYYY
+  const currentDate = new Date().toLocaleDateString('en-GB');
+  
+  // Eligibility threshold (50%)
+  const requiredPercentage = 0.5;
+  const requiredAmount = totalAmount * requiredPercentage;
+  const isEligible = paymentMade >= requiredAmount;
+  const isFullyPaid = paymentMade >= totalAmount;
+  const shortfallAmount = Math.ceil(requiredAmount - paymentMade);
   
   // --- STATE ---
   const [month1, setMonth1] = useState<string>('');
   const [month2, setMonth2] = useState<string>('');
-  const [isPlanConfirmed, setIsPlanConfirmed] = useState(false); // NEW: Tracks if Step 1 is done
+  
+  // Dates mapped to exactly what Spring Boot expects (YYYY-MM-DD)
+  const deadline1 = "2026-06-30";
+  const deadline2 = "2026-07-30";
+  
+  const [isPlanConfirmed, setIsPlanConfirmed] = useState(false);
   const [hasAccepted, setHasAccepted] = useState(false);
-
+  
+  // Submission States
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasContract, setHasContract] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  
+  // Load hasContract state from localStorage on mount
+  useEffect(() => {
+    setHasContract(localStorage.getItem('demo_installmentPlan') !== null);
+  }, []);
+  
   // --- LOGIC ---
   const sumEntered = (Number(month1) || 0) + (Number(month2) || 0);
-  const isAmountsValid = sumEntered === remainingBalance;
+  const isAmountsValid = sumEntered === remainingBalance && sumEntered > 0;
+  const canSubmit = isPlanConfirmed && hasAccepted && !isSubmitting;
   
-  // To submit the final PDF, both Step 1 must be confirmed AND terms accepted
-  const canSubmit = isPlanConfirmed && hasAccepted;
-
-  const handleAcceptAndDownload = () => {
-    if (canSubmit) {
-      window.print();
+  // Calculate current payment percentage
+  const paymentPercentage = Math.min(100, Math.round((paymentMade / totalAmount) * 100));
+  
+  const handleSubmitContract = async () => {
+    if (!canSubmit) return;
+    
+    setIsSubmitting(true);
+    setSubmitError(null);
+    
+    const payload = {
+      installments: [
+        {
+          amount: Number(month1),
+          deadlineDate: deadline1
+        },
+        {
+          amount: Number(month2),
+          deadlineDate: deadline2
+        }
+      ]
+    };
+    
+    try {
+      const token = localStorage.getItem('jwt_token'); 
+      
+      // Try real API, fallback to demo mode success on failure
+      try {
+        await axios.post('http://localhost:8080/api/contracts', payload, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+      } catch {
+        // Demo mode: simulate successful submission
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      
+      // Store the installment plan for ContractDetails to display
+      const installmentPlan = [
+        { month: "June", date: "30/06/2026", amount: Number(month1), status: "Pending" },
+        { month: "July", date: "31/07/2026", amount: Number(month2), status: "Pending" }
+      ];
+      localStorage.setItem('demo_installmentPlan', JSON.stringify(installmentPlan));
+      
+      setHasContract(true);
+    } catch (error: unknown) {
+      console.error("Error submitting contract:", error);
+      setSubmitError("Failed to submit contract. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
-
+  
+  // =========================================================
+  // SUCCESS VIEW - Contract already exists
+  // =========================================================
+  if (hasContract) {
+    return (
+      <div className="min-h-[80vh] bg-gray-50 flex items-center justify-center p-6 animate-fade-in-slow">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-md w-full text-center space-y-5">
+          <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-2 shadow-sm">
+            <CheckCircle2 size={40} />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900">Contract Already Signed</h2>
+          <p className="text-gray-500 text-sm leading-relaxed">
+            You have already submitted your payment contract for <strong>{totalAmount.toLocaleString()} RWF</strong>. 
+            You made a promise to honor the payment schedule. Keep your commitment as agreed in your contract.
+          </p>
+          <div className="pt-6 border-t border-gray-100 mt-4">
+            <Link 
+              to="/contract-details" 
+              className="inline-flex w-full items-center justify-center gap-2 bg-[#00447b] text-white font-bold py-3.5 rounded-xl hover:bg-blue-800 transition-colors shadow-sm"
+            >
+              View Contract Details
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  // =========================================================
+  // INELIGIBLE VIEW - Student hasn't paid 50%
+  // =========================================================
+  if (!isEligible) {
+    return (
+      <div className="min-h-screen bg-gray-50 pb-12">
+        <div className="max-w-4xl mx-auto space-y-6 pt-6">
+          
+          {/* Page Header */}
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <FileText className="text-blue-600" />
+              Payment Contract Setup
+            </h1>
+            <p className="text-gray-500 mt-1">Configure your installment plan and submit your official contract.</p>
+          </div>
+          
+          {/* Financial Summary Card */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 bg-blue-100 text-blue-900 rounded-full flex items-center justify-center text-xl font-bold">
+                MF
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">{studentName}</h2>
+                <p className="text-sm text-gray-500">ID: {studentId} • IT / {credits} Credits</p>
+              </div>
+            </div>
+            
+            <div className="flex gap-4 w-full md:w-auto">
+              <div className="bg-gray-50 px-4 py-3 rounded-lg border border-gray-100 flex-1 md:flex-none">
+                <p className="text-xs text-gray-500 font-semibold mb-1">Total Fee</p>
+                <p className="font-bold text-gray-900">{totalAmount.toLocaleString()} RWF</p>
+              </div>
+              <div className="bg-red-50 px-4 py-3 rounded-lg border border-red-100 flex-1 md:flex-none">
+                <p className="text-xs text-red-600 font-semibold mb-1">Remaining Balance</p>
+                <p className="font-bold text-red-700">{remainingBalance.toLocaleString()} RWF</p>
+              </div>
+              <div className="bg-amber-50 px-4 py-3 rounded-lg border border-amber-100 flex-1 md:flex-none">
+                <p className="text-xs text-amber-600 font-semibold mb-1">Payment Progress</p>
+                <p className="font-bold text-amber-700">{paymentPercentage}%</p>
+                <p className="text-xs text-gray-500">of total required</p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Ineligibility Warning */}
+          <div className="bg-red-50 border border-red-200 rounded-xl p-6 flex flex-col items-center text-center space-y-4">
+            <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center">
+              <AlertTriangle size={32} />
+            </div>
+            <h3 className="text-xl font-bold text-red-700">Not Eligible for Contract</h3>
+            <p className="text-gray-600 max-w-md">
+              You must pay at least <strong>50% of total fees ({requiredAmount.toLocaleString()} RWF)</strong> before taking a contract.
+            </p>
+            <p className="text-sm text-gray-500">
+              You need to pay <strong>{shortfallAmount.toLocaleString()} RWF</strong> more to become eligible.
+            </p>
+            
+            <Link
+              to="/dashboard"
+              className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-all shadow-sm"
+            >
+              Go to Dashboard to Make Payment
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  // =========================================================
+  // FULLY PAID VIEW - Student has paid 100% 
+  // =========================================================
+  if (isFullyPaid) {
+    return (
+      <div className="min-h-[80vh] bg-gray-50 flex items-center justify-center p-6 animate-fade-in-slow">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-md w-full text-center space-y-5">
+          <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-2 shadow-sm">
+            <CheckCircle2 size={40} />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900">Payment Complete</h2>
+          <p className="text-gray-500 text-sm leading-relaxed">
+            You have paid the full amount of <strong>{totalAmount.toLocaleString()} RWF</strong>. 
+            No contract is needed since you have already settled all fees.
+          </p>
+          <Link 
+            to="/my-fees" 
+            className="inline-flex w-full items-center justify-center gap-2 bg-[#00447b] text-white font-bold py-3.5 rounded-xl hover:bg-blue-800 transition-colors shadow-sm"
+          >
+            View Payment Summary
+          </Link>
+        </div>
+      </div>
+    );
+  }
+  
+  // =========================================================
+  // STANDARD FORM VIEW
+  // =========================================================
   return (
     <div className="min-h-screen bg-gray-50 pb-12">
-      
-      {/* =========================================================
-          WEB UI: Visible on screen, hidden when printing as PDF 
-          ========================================================= */}
-      <div className="max-w-4xl mx-auto space-y-6 pt-6 print:hidden">
+      <div className="max-w-4xl mx-auto space-y-6 pt-6">
+        
+        {submitError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl flex items-start gap-3">
+            <AlertCircle className="shrink-0 mt-0.5" size={18} />
+            <p className="text-sm font-medium">{submitError}</p>
+          </div>
+        )}
         
         {/* Page Header */}
         <div>
@@ -44,14 +271,14 @@ export default function ContractPage() {
             <FileText className="text-blue-600" />
             Payment Contract Setup
           </h1>
-          <p className="text-gray-500 mt-1">Configure your installment plan and sign your official contract.</p>
+          <p className="text-gray-500 mt-1">Configure your installment plan and submit your official contract.</p>
         </div>
-
+        
         {/* Financial Summary Card */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 bg-blue-100 text-blue-900 rounded-full flex items-center justify-center text-xl font-bold">
-              RD
+              MF
             </div>
             <div>
               <h2 className="text-lg font-bold text-gray-900">{studentName}</h2>
@@ -64,16 +291,25 @@ export default function ContractPage() {
               <p className="text-xs text-gray-500 font-semibold mb-1">Total Fee</p>
               <p className="font-bold text-gray-900">{totalAmount.toLocaleString()} RWF</p>
             </div>
+            <div className="bg-green-50 px-4 py-3 rounded-lg border border-green-100 flex-1 md:flex-none">
+              <p className="text-xs text-green-600 font-semibold mb-1">Payment Made</p>
+              <p className="font-bold text-green-700">{paymentMade.toLocaleString()} RWF</p>
+            </div>
             <div className="bg-red-50 px-4 py-3 rounded-lg border border-red-100 flex-1 md:flex-none">
               <p className="text-xs text-red-600 font-semibold mb-1">Remaining Balance</p>
               <p className="font-bold text-red-700">{remainingBalance.toLocaleString()} RWF</p>
             </div>
+            <div className="bg-blue-50 px-4 py-3 rounded-lg border border-blue-100 flex-1 md:flex-none">
+              <p className="text-xs text-blue-600 font-semibold mb-1">Payment Progress</p>
+              <p className="font-bold text-blue-700">{paymentPercentage}%</p>
+              <p className="text-xs text-gray-500">eligible for contract</p>
+            </div>
           </div>
         </div>
-
+        
         {/* Installment Plan Card */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden transition-all duration-300">
-          <div className={`px-6 py-4 flex justify-between items-center ${isPlanConfirmed ? 'bg-green-700' : 'bg-blue-900'}`}>
+          <div className={`px-6 py-4 flex justify-between items-center ${isPlanConfirmed ? 'bg-green-700' : 'bg-[#00447b]'}`}>
             <div>
               <h3 className="text-white font-semibold flex items-center gap-2">
                 Step 1: Set Installment Plan
@@ -85,45 +321,63 @@ export default function ContractPage() {
           <div className="p-6 bg-white">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">October 30, 2025</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">June 30, 2026</label>
                 <div className="relative">
                   <input 
                     type="number" 
                     value={month1}
                     onChange={(e) => setMonth1(e.target.value)}
-                    disabled={isPlanConfirmed}
+                    disabled={isPlanConfirmed || isSubmitting}
                     className="w-full pl-4 pr-12 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all font-semibold disabled:bg-gray-100 disabled:text-gray-500"
-                    placeholder="e.g. 200000"
+                    placeholder={`Suggested: ${(remainingBalance / 2).toLocaleString()}`}
                   />
                   <span className="absolute right-4 top-3 text-gray-400 font-semibold">RWF</span>
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">November 31, 2025</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">July 31, 2026</label>
                 <div className="relative">
                   <input 
                     type="number" 
                     value={month2}
                     onChange={(e) => setMonth2(e.target.value)}
-                    disabled={isPlanConfirmed}
+                    disabled={isPlanConfirmed || isSubmitting}
                     className="w-full pl-4 pr-12 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all font-semibold disabled:bg-gray-100 disabled:text-gray-500"
-                    placeholder="e.g. 146103"
+                    placeholder={`Suggested: ${(remainingBalance / 2).toLocaleString()}`}
                   />
                   <span className="absolute right-4 top-3 text-gray-400 font-semibold">RWF</span>
                 </div>
               </div>
             </div>
-
+            
+            {/* Quick Fill Buttons */}
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={() => { setMonth1(String(Math.floor(remainingBalance / 2))); setMonth2(String(Math.ceil(remainingBalance / 2))); }}
+                disabled={isPlanConfirmed || isSubmitting}
+                className="text-xs px-3 py-1.5 bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 disabled:opacity-50"
+              >
+                Split Equally
+              </button>
+              <button
+                onClick={() => { setMonth1(String(remainingBalance)); setMonth2('0'); }}
+                disabled={isPlanConfirmed || isSubmitting}
+                className="text-xs px-3 py-1.5 bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 disabled:opacity-50"
+              >
+                Pay All Now
+              </button>
+            </div>
+            
             {/* Validation Feedback */}
             <div className="mt-4">
-              {!isPlanConfirmed && !isAmountsValid && (month1 || month2) && (
+              {!isPlanConfirmed && (month1 || month2) && !isAmountsValid && (
                 <div className="flex items-center gap-2 text-amber-600 bg-amber-50 p-3 rounded-lg text-sm">
                   <AlertCircle size={16} className="shrink-0" />
                   <span>Your installments equal <strong>{sumEntered.toLocaleString()} RWF</strong>. They must exactly match the remaining balance of <strong>{remainingBalance.toLocaleString()} RWF</strong>.</span>
                 </div>
               )}
             </div>
-
+            
             {/* Step 1: Submit / Edit Button */}
             <div className="mt-6 flex justify-end border-t border-gray-100 pt-6">
               {!isPlanConfirmed ? (
@@ -131,59 +385,31 @@ export default function ContractPage() {
                   onClick={() => setIsPlanConfirmed(true)}
                   disabled={!isAmountsValid}
                   className={`flex items-center gap-2 px-6 py-2.5 rounded-lg font-bold transition-all shadow-sm
-                    ${isAmountsValid 
-                      ? 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer' 
-                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                    ${isAmountsValid ? 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
                 >
-                  <Lock size={16} />
-                  Confirm Installment Plan
+                  <Lock size={16} /> Confirm Installment Plan
                 </button>
               ) : (
                 <button
-                  onClick={() => {
-                    setIsPlanConfirmed(false);
-                    setHasAccepted(false); // Reset step 2 if they edit step 1
-                  }}
+                  onClick={() => { setIsPlanConfirmed(false); setHasAccepted(false); }}
                   className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-bold bg-gray-100 text-gray-700 hover:bg-gray-200 transition-all cursor-pointer"
                 >
-                  <Unlock size={16} />
-                  Edit Plan
+                  <Unlock size={16} /> Edit Plan
                 </button>
               )}
             </div>
           </div>
         </div>
-
-        {/* Document Uploads (Optional/Live Capture) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <button className="flex items-center justify-center gap-3 bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:border-blue-400 hover:bg-blue-50 transition-colors text-gray-600 group">
-            <div className="bg-gray-100 p-2 rounded-lg group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
-              <Upload size={20} />
-            </div>
-            <div className="text-left">
-              <p className="font-semibold text-sm text-gray-900">Upload ID Document</p>
-              <p className="text-xs text-gray-500">Browse files from device</p>
-            </div>
-          </button>
-          
-          <button className="flex items-center justify-center gap-3 bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:border-blue-400 hover:bg-blue-50 transition-colors text-gray-600 group">
-            <div className="bg-gray-100 p-2 rounded-lg group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
-              <Camera size={20} />
-            </div>
-            <div className="text-left">
-              <p className="font-semibold text-sm text-gray-900">Take Live Photo</p>
-              <p className="text-xs text-gray-500">Use device camera</p>
-            </div>
-          </button>
-        </div>
-
+        
         {/* Terms and Submission */}
         <div className={`bg-white rounded-xl shadow-sm border overflow-hidden transition-all duration-300 ${isPlanConfirmed ? 'border-gray-200 opacity-100' : 'border-gray-100 opacity-50 pointer-events-none'}`}>
+          
+          {/* RESTORED TERMS AND CONDITIONS BLOCK */}
           <div className="p-6 bg-gray-50 border-b border-gray-200 text-sm text-gray-600 leading-relaxed">
             <p className="font-semibold text-gray-900 mb-2">Step 2: Review and Accept Terms</p>
-            That I <span className="font-bold text-gray-900">{studentName}</span> hereby acknowledge that as of <span className="font-bold text-gray-900">{currentDate}</span>, I registered with the Adventist University of Central Africa in Information Technology with <span className="font-bold text-gray-900">{credits}</span> Credits and I promise to pay the total amount of the school fees on installment payment at the date as specified above.
+            That I <span className="font-bold text-gray-900">{studentName}</span> hereby acknowledge that as of <span className="font-bold text-gray-900">{currentDate}</span>, I registered with the Adventist University of Central Africa in Information Technology with <span className="font-bold text-gray-900">{credits}</span> Credits and I promise to pay the total amount of the school fees on installment payment at the dates specified above.
             <br /><br />
-            That I accept and fully understand that tuition and fees paid upon registration is not refundable on whatever reason and that 5% penalty per month on the amount due will be charged on delayed payment.
+            That I accept and fully understand that tuition and fees paid upon registration is not refundable on whatever reason and that a 5% penalty per month on the amount due will be charged on delayed payments.
           </div>
           
           <div className="p-6">
@@ -193,7 +419,7 @@ export default function ContractPage() {
                   type="checkbox" 
                   checked={hasAccepted}
                   onChange={(e) => setHasAccepted(e.target.checked)}
-                  disabled={!isPlanConfirmed}
+                  disabled={!isPlanConfirmed || isSubmitting}
                   className="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer disabled:cursor-not-allowed"
                 />
               </div>
@@ -201,103 +427,28 @@ export default function ContractPage() {
                 I have reviewed the installment plan and agree to the payment terms outlined in the official contract. I understand this serves as my digital signature.
               </span>
             </label>
-
+            
             <button 
-              onClick={handleAcceptAndDownload}
+              onClick={handleSubmitContract}
               disabled={!canSubmit}
-              className={`mt-6 w-full flex items-center justify-center gap-2 py-4 rounded-xl font-bold text-white transition-all shadow-sm
+              className={`mt-6 w-full flex items-center justify-center gap-2 py-4 rounded-xl font-bold transition-all shadow-sm
                 ${canSubmit 
-                  ? 'bg-blue-900 hover:bg-blue-800 cursor-pointer hover:shadow-md' 
-                  : 'bg-gray-300 cursor-not-allowed text-gray-500'}`}
+                  ? 'bg-[#00447b] text-white hover:bg-blue-800 cursor-pointer hover:shadow-md' 
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
             >
-              <Download size={20} />
-              Accept Terms & Generate Official Contract PDF
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={20} className="animate-spin" /> Submitting...
+                </>
+              ) : (
+                <>
+                  <FileSignature size={20} /> Submit Payment Contract
+                </>
+              )}
             </button>
           </div>
         </div>
       </div>
-
-      {/* =========================================================
-          PRINT UI: Hidden on screen, visible ONLY when printing
-          ========================================================= */}
-      <div className="hidden print:block bg-white w-full max-w-[900px] p-0 m-0 font-serif">
-        
-        {/* HEADER */}
-        <div className="flex items-center gap-6 border-b-2 border-gray-800 pb-6 mb-8">
-          <img 
-            src="https://upload.wikimedia.org/wikipedia/en/thumb/2/2d/Adventist_University_of_Central_Africa_logo.png/220px-Adventist_University_of_Central_Africa_logo.png" 
-            alt="AUCA Logo" 
-            className="w-24 h-24 object-contain grayscale"
-          />
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 tracking-wide">Adventist University of Central Africa</h1>
-            <p className="text-sm text-gray-600 mt-1">P.O. Box 2461 Kigali, Rwanda | www.auca.ac.rw | info@auca.ac.rw</p>
-          </div>
-        </div>
-
-        {/* TOP INFO */}
-        <div className="flex justify-between items-start mb-8 text-sm">
-          <div className="space-y-4">
-            <p className="font-bold text-lg uppercase">Student ID: <span className="text-black border-b border-dotted border-gray-400 font-normal ml-2 px-2">{studentId}</span></p>
-            <p>REGISTRATION PERIOD: ( ) FIRST SEM SECOND SEM: ( ) OTHERS ACADEMIC YEAR: 2025/2026</p>
-          </div>
-        </div>
-
-        <div className="text-center mb-6">
-          <p className="font-bold uppercase tracking-widest text-sm mb-2">Contract of Payment</p>
-          <p>NAME: <span className="font-bold text-black border-b border-dotted border-gray-400 px-4 text-lg">{studentName}</span></p>
-        </div>
-
-        {/* FINANCIAL TABLE FOR PDF */}
-        <div className="mb-8">
-          <table className="w-full border-collapse border-2 border-gray-900 text-sm">
-            <thead>
-              <tr>
-                <th className="border border-gray-800 p-2 text-left w-20">Amount</th>
-                <th className="border border-gray-800 p-2 text-left">Total to Paid/Ayo ugomba kwishyura</th>
-                <th className="border border-gray-800 p-2 text-left">Payment Made/Ayo wishyuye</th>
-                <th className="border border-gray-800 p-2 text-left">REMAIN/ASIGAYE</th>
-                <th className="border border-gray-800 p-2 text-left">30/10/2025</th>
-                <th className="border border-gray-800 p-2 text-left">30/11/2025</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="border border-gray-800 p-3"></td>
-                <td className="border border-gray-800 p-3 font-bold">{totalAmount.toLocaleString()}</td>
-                <td className="border border-gray-800 p-3">{paymentMade.toLocaleString()}</td>
-                <td className="border border-gray-800 p-3 font-bold">{remainingBalance.toLocaleString()}</td>
-                <td className="border border-gray-800 p-3 font-bold">{month1 ? Number(month1).toLocaleString() : ''}</td>
-                <td className="border border-gray-800 p-3 font-bold">{month2 ? Number(month2).toLocaleString() : ''}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        {/* LEGAL PARAGRAPH */}
-        <div className="text-sm leading-relaxed text-justify mb-8">
-          That I <span className="font-bold border-b border-dotted border-black px-2">{studentName}</span> hereby acknowledge that as of <span className="font-bold border-b border-dotted border-black px-2">{currentDate}</span>, I registered with the Adventist University of Central Africa in Information Technology with <span className="font-bold border-b border-dotted border-black px-2">{credits}</span> Credits and I promise to pay the total amount of the school fees on installment payment at the date as specified above.
-          <br /><br />
-          That I accept and fully understand that tuition and fees paid upon registration is not refundable on whatever reason and that 5% penalty per month on the amount due will be charged on delayed payment.
-        </div>
-
-        {/* FOOTER SIGNATURES */}
-        <div className="flex justify-between items-end mt-24 pt-8">
-          <div>
-            <p className="font-signature text-2xl text-blue-800 mb-1 -rotate-3 italic">{studentName}</p>
-            <p className="text-sm font-bold border-t border-black w-48 pt-2">Student's Digital Signature</p>
-            <p className="text-xs text-gray-500 mt-1">TEL: 0784405464</p>
-            <p className="text-[10px] text-gray-400 mt-4">Digitally accepted on: {currentDate}</p>
-          </div>
-          <div className="text-center relative">
-            <div className="absolute -top-16 -left-8 w-32 h-32 rounded-full border-4 border-black opacity-30 flex items-center justify-center transform rotate-12">
-              <span className="text-[10px] text-black font-bold text-center uppercase tracking-widest">AUCA STUDENT<br/>ACCOUNTS<br/>RWANDA</span>
-            </div>
-            <p className="text-sm font-bold border-t border-black w-56 pt-2 relative z-10 bg-white">AUCA REPRESENTATIVE</p>
-          </div>
-        </div>
-      </div>
-      
     </div>
   );
 }
