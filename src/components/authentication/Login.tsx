@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
-import axios from 'axios';
+import { authApi } from '@/lib/api';
 
 // Mock student database with different payment scenarios
 const mockStudents: Record<string, {password: string; paymentMade: number; hasContract: boolean; studentName: string; studentId: string}> = {
@@ -29,33 +29,31 @@ export default function Login() {
     setErrorMessage(null);
 
     try {
-      const response = await axios.post('http://localhost:8080/api/auth/login', {
+      const response = await authApi.login({
         username: email, 
         password: password
       });
 
-      const token = response.data.token || response.data.data?.token;
+      const token = response.data?.data?.token || response.data?.token;
+      const role = response.data?.data?.role || response.data?.role;
 
       if (token) {
         localStorage.setItem('jwt_token', token);
+        localStorage.setItem('user_role', role || 'ROLE_STUDENT');
         navigate('/student-dashboard');
       } else {
         throw new Error("No token");
       }
 
     } catch {
-      // Demo mode: Check mock students database
       const student = mockStudents[email];
       if (student && student.password === password) {
-        // Set demo data for this student
         localStorage.setItem('jwt_token', `demo_token_${email}`);
+        localStorage.setItem('user_role', 'ROLE_STUDENT');
         localStorage.setItem('demo_studentId', student.studentId);
         localStorage.setItem('demo_studentName', student.studentName);
-        
-        // Set initial payment state
         localStorage.setItem('demo_paymentMade', String(student.paymentMade));
         
-        // Set contract if exists
         if (student.hasContract) {
           const remaining = 566103 - student.paymentMade;
           const installmentPlan = [
@@ -67,9 +65,7 @@ export default function Login() {
           localStorage.removeItem('demo_installmentPlan');
         }
         
-        // Clear any previous installment payments
         localStorage.removeItem('demo_installmentPayments');
-        
         navigate('/student-dashboard');
       } else {
         setErrorMessage("Invalid credentials. Demo IDs: 25306-25310 with password 'password'");

@@ -21,15 +21,52 @@ import AdminContractDetails from "./pages/admin/AdminContractDetails";
 import AdminStudents from "./pages/admin/AdminStudents";
 import AdminStudentDetails from "./pages/admin/AdminStudentDetails";
 import AdminPenalties from "./pages/admin/AdminPenalties";
-import { Toaster } from "./components/ui/sonner"; 
+import { Toaster } from "./components/ui/sonner";
+
+// Auth wrapper component
+function AuthWrapper({ children }: { children: React.ReactNode }) {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+  return <>{children}</>;
+}
+
+function AdminAuthWrapper({ children }: { children: React.ReactNode }) {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
+  const userRole = typeof window !== 'undefined' ? localStorage.getItem('user_role') : null;
+  
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  if (userRole !== 'ROLE_ADMIN') {
+    return <Navigate to="/student-dashboard" replace />;
+  }
+  
+  return <>{children}</>;
+}
+
+function StudentAuthWrapper({ children }: { children: React.ReactNode }) {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
+  const userRole = typeof window !== 'undefined' ? localStorage.getItem('user_role') : null;
+  
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  if (userRole === 'ROLE_ADMIN') {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
+  
+  return <>{children}</>;
+}
 
 // Reset demo state on fresh page load (not soft navigation)
 function DemoReset() {
   useEffect(() => {
-    // Only clear if this is a fresh load (not SPA navigation)
     const isFreshLoad = sessionStorage.getItem('demo_initialized');
     if (!isFreshLoad) {
-      // Clear demo data for fresh start
       localStorage.removeItem('demo_paymentMade');
       localStorage.removeItem('demo_installmentPlan');
       localStorage.removeItem('demo_installmentPayments');
@@ -60,7 +97,7 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/admin/login" element={<AdminLogin />} />
 
-      {/* Admin Routes */}
+      {/* Admin Routes - Protected by admin role */}
       <Route path="/admin/*" element={
         <div className="flex h-screen bg-gray-50 overflow-hidden">
           <AdminSidebar />

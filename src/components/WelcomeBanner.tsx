@@ -1,56 +1,65 @@
 import { useState, useEffect } from "react";
-import { ArrowUpRight, FileSignature } from "lucide-react";
+import { ArrowUpRight, FileSignature, Loader2 } from "lucide-react";
 import { Link } from "react-router"; 
 import InitiatePaymentModal from "./InitiatePaymentModal";
+import { studentApi } from "@/lib/api"; // Import the API
 
 export default function WelcomeBanner() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [hasContract, setHasContract] = useState(() => localStorage.getItem('demo_installmentPlan') !== null);
+  const [loading, setLoading] = useState(true);
   
-  // Get student info from localStorage (set during login)
-  const [studentName, setStudentName] = useState(() => {
-    return localStorage.getItem('demo_studentName') || "Rukundo";
-  });
-  const [studentId, setStudentId] = useState(() => {
-    return localStorage.getItem('demo_studentId') || "25306";
-  });
-  
-  // Sync with localStorage changes
+  // Real state replacing localStorage
+  const [studentName, setStudentName] = useState("");
+  const [studentId, setStudentId] = useState("");
+  const [hasContract, setHasContract] = useState(false);
+
+  // Fetch real data on component mount
   useEffect(() => {
-    const handleStorageChange = () => {
-      setHasContract(localStorage.getItem('demo_installmentPlan') !== null);
-      const name = localStorage.getItem('demo_studentName');
-      const id = localStorage.getItem('demo_studentId');
-      if (name) setStudentName(name);
-      if (id) setStudentId(id);
+    const fetchDashboardData = async () => {
+      try {
+        const response = await studentApi.getDashboard();
+        const data = response.data.data; // Assuming ApiResponse<UnifiedDashboardResponse>
+        
+        // Map backend response to component state
+        setStudentName(data.studentName || "Student");
+        setStudentId(data.studentId || "N/A");
+        setHasContract(data.hasActiveContract); // Assuming your DTO has this boolean
+        
+      } catch (error) {
+        console.error("Failed to fetch dashboard data:", error);
+      } finally {
+        setLoading(false);
+      }
     };
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('paymentUpdated', handleStorageChange);
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('paymentUpdated', handleStorageChange);
-    };
+
+    fetchDashboardData();
   }, []);
+
+  if (loading) {
+    return (
+      <div className="rounded-lg border border-gray-200 bg-gradient-to-r from-blue-900 to-blue-800 text-white p-5 flex justify-center items-center h-24">
+        <Loader2 className="animate-spin" size={24} />
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-lg border border-gray-200 bg-gradient-to-r from-blue-900 to-blue-800 text-white overflow-hidden shadow-sm">
       <div className="p-5">
         <div className="flex items-center gap-4 flex-wrap">
           <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center text-xl font-bold shrink-0">
-            {studentName.split(' ').map(n => n[0]).join('').toUpperCase()}
+            {studentName.charAt(0).toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-bold">Welcome back, {studentName}!</h1>
+            <h1 className="text-xl font-bold">Welcome back, {studentName.split(' ')[0]}!</h1>
             <p className="text-blue-100 text-sm">Student ID: {studentId}</p>
             <p className="text-blue-100 text-xs mt-0.5">
               Networks and Communication Systems • NET
             </p>
           </div>
           
-{/* Action Buttons Container */}
-           <div className="ml-auto flex items-center gap-3 shrink-0">
-            
-            {/* Sign Contract Button - Only shown if no contract exists */}
+          <div className="ml-auto flex items-center gap-3 shrink-0">
+            {/* Sign Contract Button - Only shown if no active contract exists */}
             {!hasContract && (
               <Link
                 to="/contract"
@@ -61,7 +70,6 @@ export default function WelcomeBanner() {
               </Link>
             )}
 
-            {/* Existing Pay Now Button */}
             <button
               type="button"
               onClick={() => setIsModalOpen(true)}

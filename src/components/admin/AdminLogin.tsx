@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
-import axios from 'axios';
+import { authApi } from '@/lib/api';
 
 const mockAdmins: Record<string, {password: string; adminName: string; role: string}> = {
   "admin001": { password: "admin123", adminName: "Admin User", role: "ROLE_ADMIN" },
@@ -23,18 +23,24 @@ export default function AdminLogin() {
     setErrorMessage(null);
 
     try {
-      const response = await axios.post('http://localhost:8080/api/auth/login', {
+      const response = await authApi.login({
         username: email,
         password: password
       });
 
-      const data = response.data;
-      const token = data.token || data.data?.token;
+      const data = response.data?.data || response.data;
+      const token = data?.token;
+      const role = data?.role;
 
-      if (token) {
+      if (token && role === 'ROLE_ADMIN') {
         localStorage.setItem('jwt_token', token);
-        localStorage.setItem('user_role', 'ROLE_ADMIN');
+        localStorage.setItem('user_role', role);
         navigate('/admin/dashboard');
+      } else if (token) {
+        // If user is not admin but logged in, redirect to student dashboard
+        localStorage.setItem('jwt_token', token);
+        localStorage.setItem('user_role', role || 'ROLE_STUDENT');
+        navigate('/student-dashboard');
       } else {
         throw new Error("No token");
       }
