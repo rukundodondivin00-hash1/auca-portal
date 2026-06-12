@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Info, BookOpen, Search, Clock, CircleAlert } from 'lucide-react';
 
 export default function MyRegistration() {

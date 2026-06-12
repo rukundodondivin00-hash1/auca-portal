@@ -1,6 +1,7 @@
-import { Routes, Route } from "react-router"; 
+import { Routes, Route, Navigate } from "react-router"; 
 import { useEffect } from "react";
 import Sidebar from "./components/Sidebar";
+import AdminSidebar from "./components/admin/AdminSidebar";
 import Header from "./components/Header";
 import WelcomeBanner from "./components/WelcomeBanner";
 import StatsCards from "./components/StatsCards";
@@ -13,6 +14,14 @@ import ContractDetails from "./components/ContractDetails";
 import MyTranscript from "./components/MyTranscript"; 
 import MyRegistration from "./components/MyRegistration"; 
 import Login from "./components/authentication/Login"; 
+import AdminLogin from "./components/admin/AdminLogin";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminContracts from "./pages/admin/AdminContracts";
+import AdminContractDetails from "./pages/admin/AdminContractDetails";
+import AdminStudents from "./pages/admin/AdminStudents";
+import AdminStudentDetails from "./pages/admin/AdminStudentDetails";
+import AdminPenalties from "./pages/admin/AdminPenalties";
+import { Toaster } from "./components/ui/sonner"; 
 
 // Reset demo state on fresh page load (not soft navigation)
 function DemoReset() {
@@ -49,6 +58,30 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/admin/login" element={<AdminLogin />} />
+
+      {/* Admin Routes */}
+      <Route path="/admin/*" element={
+        <div className="flex h-screen bg-gray-50 overflow-hidden">
+          <AdminSidebar />
+          <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+            <main className="flex-1 overflow-auto">
+              <div className="p-4 lg:p-6 max-w-[1560px] mx-auto">
+                <Routes>
+                  <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
+                  <Route path="/dashboard" element={<AdminDashboard />} />
+                  <Route path="/contracts" element={<AdminContracts />} />
+                  <Route path="/contracts/:id" element={<AdminContractDetails />} />
+                  <Route path="/students" element={<AdminStudents />} />
+                  <Route path="/students/:studentId" element={<AdminStudentDetails />} />
+                  <Route path="/penalties" element={<AdminPenalties />} />
+                </Routes>
+              </div>
+            </main>
+          </div>
+          <Toaster />
+        </div>
+      } />
 
       <Route path="/*" element={
         <div className="flex h-screen bg-gray-50 overflow-hidden">
