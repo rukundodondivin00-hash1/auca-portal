@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Search, House, ChevronRight, Bell, Calendar, ChevronDown } from "lucide-react";
+import { Search, House, ChevronRight, Bell, Calendar, ChevronDown, LogOut } from "lucide-react";
 import { studentApi } from '@/lib/api';
+import { useNavigate } from 'react-router';
 
 export default function Header() {
   const [studentName, setStudentName] = useState("Loading...");
+  const [showDropdown, setShowDropdown] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchHeaderData = async () => {
@@ -11,13 +14,21 @@ export default function Header() {
         const response = await studentApi.getDashboard();
         setStudentName(response.data.data?.student?.studentName || "Musengimana Fabrice");
       } catch (error) {
-        setStudentName("Musengimana Fabrice");
+        setStudentName(localStorage.getItem('student_name') || localStorage.getItem('fullName') || "Musengimana Fabrice");
       }
     };
     fetchHeaderData();
   }, []);
 
-  // Generate Initials safely
+  const handleLogout = () => {
+    localStorage.removeItem('jwt_token');
+    localStorage.removeItem('user_role');
+    localStorage.removeItem('student_id');
+    localStorage.removeItem('student_name');
+    localStorage.removeItem('admin_name');
+    navigate('/login');
+  };
+
   const initials = studentName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
 
   return (
@@ -56,16 +67,33 @@ export default function Header() {
             <Bell size={18} />
           </button>
 
-          <button className="flex items-center gap-2 p-1 rounded-lg transition-all duration-150 hover:bg-gray-50">
-            <div className="w-8 h-8 bg-blue-900 rounded-full flex items-center justify-center text-white text-xs font-semibold shadow-sm">
-              {initials}
-            </div>
-            <div className="hidden md:block text-left">
-              <p className="text-sm font-medium text-gray-900 leading-tight">{studentName}</p>
-              <p className="text-[11px] text-gray-500 leading-tight">Student</p>
-            </div>
-            <ChevronDown size={14} className="text-gray-400 hidden sm:block" />
-          </button>
+          <div className="relative">
+            <button 
+              className="flex items-center gap-2 p-1 rounded-lg transition-all duration-150 hover:bg-gray-50"
+              onClick={() => setShowDropdown(!showDropdown)}
+            >
+              <div className="w-8 h-8 bg-blue-900 rounded-full flex items-center justify-center text-white text-xs font-semibold shadow-sm">
+                {initials}
+              </div>
+              <div className="hidden md:block text-left">
+                <p className="text-sm font-medium text-gray-900 leading-tight">{studentName}</p>
+                <p className="text-[11px] text-gray-500 leading-tight">Student</p>
+              </div>
+              <ChevronDown size={14} className="text-gray-400 hidden sm:block" />
+            </button>
+
+            {showDropdown && (
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-50 transition-colors"
+                >
+                  <LogOut size={16} />
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </header>

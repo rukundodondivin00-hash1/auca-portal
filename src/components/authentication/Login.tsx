@@ -3,21 +3,18 @@ import { Link, useNavigate } from 'react-router';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 import { authApi } from '@/lib/api';
 
-// Mock student database with different payment scenarios
-const mockStudents: Record<string, {password: string; paymentMade: number; hasContract: boolean; studentName: string; studentId: string}> = {
-  "25306": { password: "password", paymentMade: 220000, hasContract: false, studentName: "Musengimana Fabrice", studentId: "25306" },
-  "25307": { password: "password", paymentMade: 300000, hasContract: true, studentName: "Ishimwe Alice", studentId: "25307" }, // Has contract, paid 53%
-  "25308": { password: "password", paymentMade: 566103, hasContract: false, studentName: "Nkundimana Bob", studentId: "25308" }, // Fully paid
-  "25309": { password: "password", paymentMade: 0, hasContract: false, studentName: "Uwimana Claire", studentId: "25309" }, // Not paid anything
-  "25310": { password: "password", paymentMade: 283051, hasContract: false, studentName: "Mugisha David", studentId: "25310" }, // Exactly 50% eligible
-};
+interface LoginResponse {
+  token: string;
+  role: string;
+  username?: string;
+  fullName?: string;
+  email?: string;
+}
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  
-  // New states for API handling
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
@@ -34,42 +31,25 @@ export default function Login() {
         password: password
       });
 
-      const token = response.data?.data?.token || response.data?.token;
-      const role = response.data?.data?.role || response.data?.role;
+      const data: LoginResponse = response.data?.data || response.data || {};
+      const token = data?.token;
+      const role = data?.role;
 
-      if (token) {
+      if (token && role) {
         localStorage.setItem('jwt_token', token);
-        localStorage.setItem('user_role', role || 'ROLE_STUDENT');
-        navigate('/student-dashboard');
+        // Convert STUDENT to ROLE_STUDENT for consistency
+        const normalizedRole = role === 'STUDENT' ? 'ROLE_STUDENT' : role;
+        localStorage.setItem('user_role', normalizedRole);
+        if (data.username) localStorage.setItem('student_id', data.username);
+        if (data.fullName) localStorage.setItem('student_name', data.fullName);
+        navigate(normalizedRole === 'ROLE_ADMIN' ? '/admin/dashboard' : '/student-dashboard');
       } else {
-        throw new Error("No token");
+        throw new Error("Invalid response from server");
       }
 
-    } catch {
-      const student = mockStudents[email];
-      if (student && student.password === password) {
-        localStorage.setItem('jwt_token', `demo_token_${email}`);
-        localStorage.setItem('user_role', 'ROLE_STUDENT');
-        localStorage.setItem('demo_studentId', student.studentId);
-        localStorage.setItem('demo_studentName', student.studentName);
-        localStorage.setItem('demo_paymentMade', String(student.paymentMade));
-        
-        if (student.hasContract) {
-          const remaining = 566103 - student.paymentMade;
-          const installmentPlan = [
-            { month: "June", date: "30/06/2026", amount: Math.floor(remaining / 2), status: "Pending" },
-            { month: "July", date: "31/07/2026", amount: Math.ceil(remaining / 2), status: "Pending" }
-          ];
-          localStorage.setItem('demo_installmentPlan', JSON.stringify(installmentPlan));
-        } else {
-          localStorage.removeItem('demo_installmentPlan');
-        }
-        
-        localStorage.removeItem('demo_installmentPayments');
-        navigate('/student-dashboard');
-      } else {
-        setErrorMessage("Invalid credentials. Demo IDs: 25306-25310 with password 'password'");
-      }
+    } catch (error: any) {
+      const msg = error.response?.data?.message || error.message || "Login failed. Please check your credentials.";
+      setErrorMessage(msg);
     } finally {
       setIsLoading(false);
     }

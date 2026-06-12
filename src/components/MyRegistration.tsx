@@ -1,9 +1,25 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Info, BookOpen, Search, Clock, CircleAlert } from 'lucide-react';
+import { studentApi } from '@/lib/api';
 
 export default function MyRegistration() {
-  // State to manage the active tab
   const [activeTab, setActiveTab] = useState<'my-courses' | 'browse' | 'timetable'>('my-courses');
+  const [activeTerm, setActiveTerm] = useState("Loading...");
+
+  useEffect(() => {
+    const fetchTerm = async () => {
+      try {
+        const response = await studentApi.getDashboard();
+        if (response.data?.data?.student?.activeTerm) {
+          setActiveTerm(response.data.data.student.activeTerm);
+        }
+      } catch (error) {
+        const savedTerm = typeof window !== 'undefined' ? localStorage.getItem('active_term') : null;
+        setActiveTerm(savedTerm || "2025/1");
+      }
+    };
+    fetchTerm();
+  }, []);
 
   return (
     <div className="space-y-6 animate-fade-in-slow">
@@ -15,7 +31,7 @@ export default function MyRegistration() {
             My Registration
           </h1>
           <p className="text-gray-300 dark:text-slate-300 font-light mt-0.5 text-sm">
-            Active term: 2025/1
+            Active term: {activeTerm}
           </p>
         </div>
       </div>
@@ -42,8 +58,7 @@ export default function MyRegistration() {
             }`}
           >
             <span className="flex items-center justify-center gap-2">
-              <BookOpen size={16} />
-              My Courses
+              <BookOpen size={16} /> My Courses
             </span>
           </button>
           
@@ -56,8 +71,7 @@ export default function MyRegistration() {
             }`}
           >
             <span className="flex items-center justify-center gap-2">
-              <Search size={16} />
-              Browse Courses
+              <Search size={16} /> Browse Courses
             </span>
           </button>
           
@@ -70,16 +84,13 @@ export default function MyRegistration() {
             }`}
           >
             <span className="flex items-center justify-center gap-2">
-              <Clock size={16} />
-              Timetable
+              <Clock size={16} /> Timetable
             </span>
           </button>
         </div>
 
         {/* Tab Content */}
         <div className="p-4">
-          
-          {/* MY COURSES TAB */}
           {activeTab === 'my-courses' && (
             <div className="space-y-4">
               <div className="flex items-start gap-2 bg-[#fffbeb] border border-[#fde68a] rounded-md px-3 py-2">
@@ -88,7 +99,6 @@ export default function MyRegistration() {
                   Direct add/remove is only available while the registration window is open.
                 </p>
               </div>
-              
               <div className="py-12">
                 <div className="flex flex-col items-center justify-center py-10 text-gray-400 dark:text-slate-500 gap-2">
                   <CircleAlert size={24} />
@@ -101,7 +111,6 @@ export default function MyRegistration() {
             </div>
           )}
 
-          {/* BROWSE COURSES TAB (Placeholder) */}
           {activeTab === 'browse' && (
             <div className="py-12 flex flex-col items-center justify-center text-gray-400 dark:text-slate-500 gap-2">
               <Search size={24} />
@@ -109,14 +118,12 @@ export default function MyRegistration() {
             </div>
           )}
 
-          {/* TIMETABLE TAB (Placeholder) */}
           {activeTab === 'timetable' && (
             <div className="py-12 flex flex-col items-center justify-center text-gray-400 dark:text-slate-500 gap-2">
               <Clock size={24} />
               <p className="text-sm">No timetable generated for this term.</p>
             </div>
           )}
-
         </div>
       </div>
     </div>

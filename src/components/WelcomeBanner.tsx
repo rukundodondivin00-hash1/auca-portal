@@ -2,31 +2,32 @@ import { useState, useEffect } from "react";
 import { ArrowUpRight, FileSignature, Loader2 } from "lucide-react";
 import { Link } from "react-router"; 
 import InitiatePaymentModal from "./InitiatePaymentModal";
-import { studentApi } from "@/lib/api"; // Import the API
+import { studentApi } from "@/lib/api";
 
 export default function WelcomeBanner() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   
-  // Real state replacing localStorage
   const [studentName, setStudentName] = useState("");
   const [studentId, setStudentId] = useState("");
   const [hasContract, setHasContract] = useState(false);
 
-  // Fetch real data on component mount
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         const response = await studentApi.getDashboard();
-        const data = response.data.data; // Assuming ApiResponse<UnifiedDashboardResponse>
+        const data = response.data.data;
         
-        // Map backend response to component state
         setStudentName(data.studentName || "Student");
-        setStudentId(data.studentId || "N/A");
-        setHasContract(data.hasActiveContract); // Assuming your DTO has this boolean
+        setStudentId(data.studentId || localStorage.getItem('student_id') || localStorage.getItem('username') || "N/A");
+        setHasContract(data.hasActiveContract || false);
         
-      } catch (error) {
+          } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
+        // Fallback to localStorage data from login
+        setStudentName(localStorage.getItem('student_name') || "Musengimana Fabrice");
+        setStudentId(localStorage.getItem('student_id') || localStorage.getItem('username') || "25306");
+        setHasContract(false);
       } finally {
         setLoading(false);
       }
@@ -59,7 +60,6 @@ export default function WelcomeBanner() {
           </div>
           
           <div className="ml-auto flex items-center gap-3 shrink-0">
-            {/* Sign Contract Button - Only shown if no active contract exists */}
             {!hasContract && (
               <Link
                 to="/contract"

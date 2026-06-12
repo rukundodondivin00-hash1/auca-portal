@@ -3,6 +3,14 @@ import { useNavigate } from 'react-router';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 import { authApi } from '@/lib/api';
 
+interface LoginResponse {
+  token: string;
+  role: string;
+  username?: string;
+  fullName?: string;
+  adminName?: string;
+}
+
 const mockAdmins: Record<string, {password: string; adminName: string; role: string}> = {
   "admin001": { password: "admin123", adminName: "Admin User", role: "ROLE_ADMIN" },
   "admin002": { password: "admin123", adminName: "Finance Officer", role: "ROLE_ADMIN" },
@@ -24,31 +32,29 @@ export default function AdminLogin() {
 
     try {
       const response = await authApi.login({
-        username: email,
+        username: email, 
         password: password
       });
 
-      const data = response.data?.data || response.data;
+      const data: LoginResponse = response.data?.data || response.data || {};
       const token = data?.token;
       const role = data?.role;
 
-      if (token && role === 'ROLE_ADMIN') {
+      if (token && role) {
         localStorage.setItem('jwt_token', token);
-        localStorage.setItem('user_role', role);
-        navigate('/admin/dashboard');
-      } else if (token) {
-        // If user is not admin but logged in, redirect to student dashboard
-        localStorage.setItem('jwt_token', token);
-        localStorage.setItem('user_role', role || 'ROLE_STUDENT');
-        navigate('/student-dashboard');
+        const normalizedRole = role === 'STUDENT' ? 'ROLE_STUDENT' : role;
+        localStorage.setItem('user_role', normalizedRole);
+        if (data.adminName) localStorage.setItem('admin_name', data.adminName);
+        else if (data.fullName) localStorage.setItem('admin_name', data.fullName);
+        navigate(normalizedRole === 'ROLE_ADMIN' || normalizedRole === 'ADMIN' ? '/admin/dashboard' : '/student-dashboard');
       } else {
-        throw new Error("No token");
+        throw new Error("Invalid response from server");
       }
 
-    } catch {
+    } catch (error: any) {
       const admin = mockAdmins[email];
       if (admin && admin.password === password) {
-        localStorage.setItem('jwt_token', `demo_admin_token_${email}`);
+        localStorage.setItem('jwt_token', `demo_token_${email}`);
         localStorage.setItem('user_role', admin.role);
         localStorage.setItem('admin_name', admin.adminName);
         navigate('/admin/dashboard');

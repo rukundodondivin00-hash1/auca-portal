@@ -1,8 +1,7 @@
 import axios from 'axios';
 
-// 1. Axios Instance Configuration
 const api = axios.create({
-  baseURL: 'http://localhost:8080',
+  baseURL: import.meta.env.VITE_API_URL || 'https://auca-contract.onrender.com',
   headers: {
     'Content-Type': 'application/json',
   },
