@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from "react-router"; 
+import { Routes, Route, Navigate } from "react-router";
 import { useEffect } from "react";
 import Sidebar from "./components/Sidebar";
 import AdminSidebar from "./components/admin/AdminSidebar";
