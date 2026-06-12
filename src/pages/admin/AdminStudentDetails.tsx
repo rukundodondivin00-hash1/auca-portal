@@ -4,7 +4,8 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
-import { adminApi, StudentSummary, Contract } from '@/lib/api';
+import { adminApi } from '@/lib/api';
+import type { StudentSummary, Contract } from '@/lib/api';
 import { ArrowLeft, Users, FileSignature, DollarSign, TrendingUp } from 'lucide-react';
 
 export default function AdminStudentDetails() {

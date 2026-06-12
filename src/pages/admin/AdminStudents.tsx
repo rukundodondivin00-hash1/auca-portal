@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
 import { Search, ChevronLeft, ChevronRight, RefreshCw, Eye } from 'lucide-react';
-import { adminApi, StudentSummary } from '@/lib/api';
+import { adminApi } from '@/lib/api';
+import type { StudentSummary } from '@/lib/api';
 
 export default function AdminStudents() {
   const [students, setStudents] = useState<StudentSummary[]>([]);

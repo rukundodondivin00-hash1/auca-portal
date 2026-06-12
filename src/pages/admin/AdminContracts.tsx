@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { adminApi, Contract } from '@/lib/api';
+import { adminApi } from '@/lib/api';
+import type { Contract } from '@/lib/api';
 import { Search, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 
 export default function AdminContracts() {

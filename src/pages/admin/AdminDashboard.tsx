@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Users, FileSignature, History, TrendingUp } from 'lucide-react';
-import { adminApi, Contract } from '@/lib/api';
+import { adminApi } from '@/lib/api';
+import type { Contract } from '@/lib/api';
 
 export default function AdminDashboard() {
   const [contracts, setContracts] = useState<Contract[]>([]);

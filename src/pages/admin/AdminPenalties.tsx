@@ -3,7 +3,8 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, RefreshCw, Search } from 'lucide-react';
-import { adminApi, Penalty } from '@/lib/api';
+import { adminApi } from '@/lib/api';
+import type { Penalty } from '@/lib/api';
 import { Input } from '@/components/ui/input';
 
 export default function AdminPenalties() {

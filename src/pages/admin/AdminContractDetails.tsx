@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
-import { adminApi, Contract, Installment } from '@/lib/api';
+import { adminApi } from '@/lib/api';
+import type { Contract, Installment } from '@/lib/api';
 import { ArrowLeft, Calendar, DollarSign, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
