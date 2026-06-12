@@ -3,12 +3,10 @@ import { useParams, useNavigate } from 'react-router';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
 import { adminApi } from '@/lib/api';
 import type { Contract, Installment } from '@/lib/api';
-import { ArrowLeft, Calendar, DollarSign, AlertCircle } from 'lucide-react';
-import { toast } from 'sonner';
+import { ArrowLeft, Calendar, DollarSign } from 'lucide-react';
 
 export default function AdminContractDetails() {
   const { id } = useParams<{ id: string }>();
@@ -32,45 +30,8 @@ export default function AdminContractDetails() {
       setInstallments(installmentsResponse.data);
     } catch (error) {
       console.error('Failed to fetch contract details:', error);
-      toast.error('Failed to load contract details');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleUpdateContractStatus = async (status: string) => {
-    if (!contract) return;
-    try {
-      await adminApi.updateContractStatus(contract.id, { status });
-      setContract({ ...contract, status: status as any });
-      toast.success('Contract status updated');
-    } catch (error) {
-      toast.error('Failed to update status');
-    }
-  };
-
-  const handleUpdateInstallmentStatus = async (installmentId: string, status: 'PAID' | 'PENDING') => {
-    try {
-      await adminApi.updateInstallmentStatus(installmentId, status);
-      setInstallments(installments.map(inst => 
-        inst.id === installmentId ? { ...inst, status } : inst
-      ));
-      toast.success('Installment status updated');
-    } catch (error) {
-      toast.error('Failed to update installment status');
-    }
-  };
-
-  const handleWaivePenalty = async (installmentId: string) => {
-    if (!window.confirm('Are you sure you want to waive the penalty for this installment?')) return;
-    try {
-      await adminApi.waiveInstallmentPenalty(installmentId);
-      setInstallments(installments.map(inst => 
-        inst.id === installmentId ? { ...inst, penaltyAmount: 0 } : inst
-      ));
-      toast.success('Penalty waived successfully');
-    } catch (error) {
-      toast.error('Failed to waive penalty');
     }
   };
 
@@ -102,6 +63,8 @@ export default function AdminContractDetails() {
     );
   }
 
+  const totalPaid = contract.amountPaidAtSigning + contract.totalPaidOnInstallments;
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center gap-4">
@@ -110,7 +73,7 @@ export default function AdminContractDetails() {
         </Button>
         <div>
           <h1 className="text-2xl font-bold">Contract Details</h1>
-          <p className="text-gray-500">Contract ID: {contract.id}</p>
+          <p className="text-gray-500">Viewing contract for {contract.studentName}</p>
         </div>
       </div>
 
@@ -165,43 +128,22 @@ export default function AdminContractDetails() {
               <span className="font-bold">{formatCurrency(contract.totalFees)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-500">Balance at Signing</span>
-              <span className="font-medium">{formatCurrency(contract.balanceAtSigning)}</span>
-            </div>
-            <div className="flex justify-between">
               <span className="text-gray-500">Paid at Signing</span>
               <span className="font-medium">{formatCurrency(contract.amountPaidAtSigning)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-500">Remaining at Signing</span>
-              <span className="font-medium">{formatCurrency(contract.remainingAtSigning)}</span>
+              <span className="text-gray-500">Paid on Installments</span>
+              <span className="font-medium">{formatCurrency(contract.totalPaidOnInstallments)}</span>
             </div>
             <div className="pt-4 border-t">
-              <div className="flex justify-between">
-                <span className="text-gray-500">Total on Installments</span>
-                <span className="font-medium">{formatCurrency(contract.totalPaidOnInstallments)}</span>
+              <div className="flex justify-between text-green-600 font-bold">
+                <span>Total Paid</span>
+                <span>{formatCurrency(totalPaid)}</span>
               </div>
               <div className="flex justify-between text-red-600">
                 <span className="text-gray-500">Total Penalties</span>
                 <span className="font-medium">{formatCurrency(contract.totalPenaltyOnInstallments)}</span>
               </div>
-            </div>
-
-            <div className="pt-4">
-              <Select 
-                value={contract.status} 
-                onValueChange={handleUpdateContractStatus}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Update status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="PENDING">Set Pending</SelectItem>
-                  <SelectItem value="ACTIVE">Set Active</SelectItem>
-                  <SelectItem value="COMPLETED">Set Completed</SelectItem>
-                  <SelectItem value="CANCELLED">Set Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
           </CardContent>
         </Card>
@@ -220,7 +162,6 @@ export default function AdminContractDetails() {
                 <TableHead>Amount</TableHead>
                 <TableHead>Penalty</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -252,34 +193,15 @@ export default function AdminContractDetails() {
                       {installment.status}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right space-x-2">
-                    <Select
-                      value={installment.status}
-                      onValueChange={(value) => handleUpdateInstallmentStatus(installment.id, value as 'PAID' | 'PENDING')}
-                    >
-                      <SelectTrigger className="w-[120px] h-8">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="PAID">Paid</SelectItem>
-                        <SelectItem value="PENDING">Pending</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    
-                    {installment.penaltyAmount > 0 && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleWaivePenalty(installment.id)}
-                        className="text-orange-600 hover:text-orange-700"
-                      >
-                        <AlertCircle className="h-4 w-4 mr-1" />
-                        Waive
-                      </Button>
-                    )}
-                  </TableCell>
                 </TableRow>
               ))}
+              {installments.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-8">
+                    No installments scheduled
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>

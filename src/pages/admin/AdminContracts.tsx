@@ -5,36 +5,29 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { adminApi } from '@/lib/api';
 import type { Contract } from '@/lib/api';
-import { Search, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
+import { Search, RefreshCw } from 'lucide-react';
 
 export default function AdminContracts() {
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [selectedContracts, setSelectedContracts] = useState<string[]>([]);
-  const [currentPage, setCurrentPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [totalElements, setTotalElements] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchContracts();
-  }, [currentPage, statusFilter]);
+  }, [statusFilter]);
 
   const fetchContracts = async () => {
     setLoading(true);
     try {
       const response = statusFilter === 'all' 
-        ? await adminApi.getContracts(currentPage)
+        ? await adminApi.getContracts()
         : await adminApi.getContractsByStatus(statusFilter);
       setContracts(response.data.content);
-      setTotalPages(response.data.totalPages);
-      setTotalElements(response.data.totalElements);
     } catch (error) {
       console.error('Failed to fetch contracts:', error);
     } finally {
@@ -57,39 +50,10 @@ export default function AdminContracts() {
       const contractResponses = await Promise.all(contractPromises);
       const allContracts = contractResponses.flatMap(r => r.data.content);
       setContracts(allContracts);
-      setTotalPages(1);
-      setTotalElements(allContracts.length);
     } catch (error) {
       console.error('Search failed:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedContracts(contracts.map(c => c.id));
-    } else {
-      setSelectedContracts([]);
-    }
-  };
-
-  const handleSelectContract = (id: string, checked: boolean) => {
-    if (checked) {
-      setSelectedContracts([...selectedContracts, id]);
-    } else {
-      setSelectedContracts(selectedContracts.filter(cid => cid !== id));
-    }
-  };
-
-  const handleBulkStatusUpdate = async (status: string) => {
-    if (!selectedContracts.length) return;
-    try {
-      await adminApi.bulkUpdateContractStatus(selectedContracts, status);
-      setSelectedContracts([]);
-      fetchContracts();
-    } catch (error) {
-      console.error('Bulk update failed:', error);
     }
   };
 
@@ -108,22 +72,66 @@ export default function AdminContracts() {
     return new Intl.NumberFormat('en-RW', { style: 'currency', currency: 'RWF' }).format(amount);
   };
 
+  // Statistics
+  const totalContracts = contracts.length;
+  const pendingContracts = contracts.filter(c => c.status === 'PENDING').length;
+  const activeContracts = contracts.filter(c => c.status === 'ACTIVE').length;
+  const completedContracts = contracts.filter(c => c.status === 'COMPLETED').length;
+  const totalAmount = contracts.reduce((sum, c) => sum + c.totalFees, 0);
+  const totalPaid = contracts.reduce((sum, c) => sum + c.amountPaidAtSigning + c.totalPaidOnInstallments, 0);
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Contracts Management</h1>
-          <p className="text-gray-500 mt-1">View and manage all student payment contracts</p>
+          <h1 className="text-2xl font-bold">Contract Overview</h1>
+          <p className="text-gray-500 mt-1">View all student payment contracts (read-only)</p>
         </div>
         <Button variant="outline" onClick={fetchContracts}>
           <RefreshCw className="h-4 w-4 mr-2" /> Refresh
         </Button>
       </div>
 
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Total Contracts</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalContracts}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Pending</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-yellow-600">{pendingContracts}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Active</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{activeContracts}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Completed</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{completedContracts}</div>
+          </CardContent>
+        </Card>
+      </div>
+
       <Card>
         <CardHeader>
-          <CardTitle>Filters & Search</CardTitle>
-          <CardDescription>Filter contracts by status or search by student</CardDescription>
+          <CardTitle>Search & Filter</CardTitle>
+          <CardDescription>Search contracts by student or filter by status</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col sm:flex-row gap-4">
           <form onSubmit={handleSearch} className="flex-1 flex gap-2">
@@ -151,19 +159,6 @@ export default function AdminContracts() {
               <SelectItem value="OVERDUE">Overdue</SelectItem>
             </SelectContent>
           </Select>
-
-          {selectedContracts.length > 0 && (
-            <Select onValueChange={handleBulkStatusUpdate}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder={`Bulk update (${selectedContracts.length})`} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ACTIVE">Set Active</SelectItem>
-                <SelectItem value="COMPLETED">Set Completed</SelectItem>
-                <SelectItem value="CANCELLED">Set Cancelled</SelectItem>
-              </SelectContent>
-            </Select>
-          )}
         </CardContent>
       </Card>
 
@@ -176,16 +171,12 @@ export default function AdminContracts() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>
-                      <Checkbox 
-                        checked={selectedContracts.length === contracts.length && contracts.length > 0}
-                        onCheckedChange={handleSelectAll}
-                      />
-                    </TableHead>
                     <TableHead>Student ID</TableHead>
                     <TableHead>Student Name</TableHead>
                     <TableHead>Term</TableHead>
                     <TableHead>Total Fees</TableHead>
+                    <TableHead>Amount Paid</TableHead>
+                    <TableHead>Balance</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Agreed</TableHead>
                     <TableHead>Installments</TableHead>
@@ -195,23 +186,19 @@ export default function AdminContracts() {
                 <TableBody>
                   {contracts.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center py-8">
+                      <TableCell colSpan={10} className="text-center py-8">
                         No contracts found
                       </TableCell>
                     </TableRow>
                   ) : (
                     contracts.map((contract) => (
                       <TableRow key={contract.id}>
-                        <TableCell>
-                          <Checkbox 
-                            checked={selectedContracts.includes(contract.id)}
-                            onCheckedChange={(checked) => handleSelectContract(contract.id, checked as boolean)}
-                          />
-                        </TableCell>
                         <TableCell className="font-medium">{contract.studentId}</TableCell>
                         <TableCell>{contract.studentName}</TableCell>
                         <TableCell>{contract.termId}</TableCell>
                         <TableCell>{formatCurrency(contract.totalFees)}</TableCell>
+                        <TableCell>{formatCurrency(contract.amountPaidAtSigning + contract.totalPaidOnInstallments)}</TableCell>
+                        <TableCell>{formatCurrency(contract.remainingAtSigning - contract.totalPaidOnInstallments)}</TableCell>
                         <TableCell>
                           <Badge variant={getStatusBadgeVariant(contract.status) as any}>
                             {contract.status}
@@ -229,7 +216,7 @@ export default function AdminContracts() {
                             size="sm"
                             onClick={() => navigate(`/admin/contracts/${contract.id}`)}
                           >
-                            View
+                            View Details
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -238,28 +225,13 @@ export default function AdminContracts() {
                 </TableBody>
               </Table>
 
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between p-4 border-t">
-                  <p className="text-sm text-gray-500">
-                    Page {currentPage + 1} of {totalPages} ({totalElements} total)
-                  </p>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
-                      disabled={currentPage === 0}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
-                      disabled={currentPage >= totalPages - 1}
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
+              {/* Summary Footer */}
+              {contracts.length > 0 && (
+                <div className="p-4 border-t bg-gray-50">
+                  <div className="flex justify-between text-sm">
+                    <span>Total Amount: <strong>{formatCurrency(totalAmount)}</strong></span>
+                    <span>Total Paid: <strong>{formatCurrency(totalPaid)}</strong></span>
+                    <span>Total Balance: <strong>{formatCurrency(totalAmount - totalPaid)}</strong></span>
                   </div>
                 </div>
               )}
