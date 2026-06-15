@@ -64,7 +64,7 @@ export default function InitiatePaymentModal({ isOpen, onClose }: PaymentModalPr
               onChange={(e) => setPaymentAmount(e.target.value)}
             />
             <p className="text-xs text-gray-500">
-              {!isEligible ? Minimum to become eligible:  RWF : 'Payment amount toward remaining balance'}
+              {!isEligible ? `Minimum to become eligible: ${shortfall.toLocaleString()} RWF` : 'Payment amount toward remaining balance'}
             </p>
           </div>
 
