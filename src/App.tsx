@@ -30,11 +30,11 @@ function AdminAuthWrapper({ children }: { children: React.ReactNode }) {
   const isAdmin = userRole === 'ROLE_ADMIN' || userRole === 'ADMIN';
   
   if (!token) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/admin/login" replace />;
   }
   
   if (!isAdmin) {
-    return <Navigate to="/student-dashboard" replace />;
+    return <Navigate to="/admin/login" replace />;
   }
   
   return <>{children}</>;
