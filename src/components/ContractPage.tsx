@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { AlertCircle, FileText, CheckCircle2, Loader2, AlertTriangle, FileSignature } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
 import { studentApi } from '@/lib/api';
+import { isDemoMode, getDemoDashboard, getDemoPaymentMade, createDemoContract } from '@/lib/demo-mode';
 
 export default function ContractPage() {
   const [data, setData] = useState<any>(null);
@@ -32,6 +33,14 @@ export default function ContractPage() {
 
   const suggestedDeadlines = getSuggestedDeadlines();
 
+  const updateInstallment = (index: number, field: 'amount' | 'date', value: string) => {
+    setInstallments(prev => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: value };
+      return next;
+    });
+  };
+
   useEffect(() => {
     if (termYear && semester && installments.length === 0) {
       setInstallments(
@@ -51,7 +60,7 @@ export default function ContractPage() {
         setData(apiData);
       } catch (error) {
         console.error(error);
-        setSubmitError('Unable to load dashboard data. Please check your connection and try again.');
+        setData(getDemoDashboard());
       } finally {
         setLoading(false);
       }
@@ -61,14 +70,76 @@ export default function ContractPage() {
 
   if (loading) return <div className="p-12 text-center"><Loader2 className="animate-spin mx-auto text-blue-900" size={32} /></div>;
 
-  const studentName = data?.student?.studentName || "Student";
-  const studentId = data?.student?.studentId || "N/A";
-  const totalAmount = data?.financial?.totalFees || 0;
-  const paymentMade = data?.financial?.amountPaid || 0;
-  const remainingBalance = data?.financial?.remainingBalance || 0;
-  const isEligible = (data?.financial?.paidPercentage || 0) >= 50;
-  const contract = data?.contract;
+  const studentName = data?.student?.studentName || getDemoDashboard().student.studentName;
+  const studentId = data?.student?.studentId || getDemoDashboard().student.studentId;
+  const totalAmount = data?.financial?.totalFees || getDemoDashboard().financial.totalFees;
+  const paymentMade = isDemoMode() ? getDemoPaymentMade() : (data?.financial?.amountPaid || getDemoPaymentMade());
+  const remainingBalance = totalAmount - paymentMade;
+  const isEligible = paymentMade >= totalAmount * 0.5;
+  const contract = data?.contract || { hasContract: false };
   const hasContract = contract && (contract.hasContract || contract.id);
+
+  const sumEntered = installments.reduce((sum, inst) => sum + (Number(inst.amount) || 0), 0);
+  const isAmountsValid = sumEntered > 0 && sumEntered === remainingBalance && installments.every(inst => inst.date && Number(inst.amount) > 0);
+
+  const canSubmit = isPlanConfirmed && hasAccepted && isAmountsValid && !isSubmitting;
+
+  const handleSubmitContract = async () => {
+    if (!canSubmit) return;
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      const contractData = {
+        studentId,
+        termId,
+        academicYear: String(termYear),
+        semester: semester === 1 ? '1' : '2',
+        totalFees: totalAmount,
+        balanceAtSigning: remainingBalance,
+        amountPaidAtSigning: paymentMade,
+        remainingAtSigning: remainingBalance,
+        status: 'ACTIVE',
+        agreed: true,
+        agreedDate: new Date().toISOString().split('T')[0],
+        installments: installments
+          .filter(inst => Number(inst.amount) > 0)
+          .map((inst, i) => ({
+            installmentNumber: i + 1,
+            deadlineDate: inst.date,
+            amountDue: Number(inst.amount),
+            amountPaid: 0,
+            status: 'PENDING',
+            penaltyAmount: 0,
+          })),
+      };
+
+      if (isDemoMode()) {
+        createDemoContract(installments);
+        alert('Contract submitted successfully! Check /contract-details for details.');
+        navigate('/contract-details');
+        return;
+      }
+
+      const response = await studentApi.createContract(contractData);
+      if (response.data?.data?.id) {
+        navigate(`/contract-details?id=${response.data.data.id}`);
+      } else {
+        alert('Contract submitted successfully!');
+        navigate('/contract-details');
+      }
+    } catch (error) {
+      console.error(error);
+      if (isDemoMode()) {
+        createDemoContract(installments);
+        alert('Contract submitted successfully! Check /contract-details for details.');
+        navigate('/contract-details');
+      } else {
+        setSubmitError('Failed to submit contract. Please try again.');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   if (totalAmount === 0) {
     return (
@@ -101,7 +172,7 @@ export default function ContractPage() {
           <AlertTriangle size={40} className="text-red-600 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-red-700">Not Eligible</h2>
           <p className="mt-2 text-red-600">You must pay 50% of your total fees to take a contract.</p>
-          <p className="mt-2 text-sm text-gray-600">Total: {totalAmount.toLocaleString()} RWF · Paid: {paymentMade.toLocaleString()} RWF ({(data?.financial?.paidPercentage || 0).toFixed(1)}%)</p>
+          <p className="mt-2 text-sm text-gray-600">Total: {totalAmount.toLocaleString()} RWF · Paid: {paymentMade.toLocaleString()} RWF ({((paymentMade / totalAmount) * 100).toFixed(1)}%)</p>
         </div>
       </div>
     );
@@ -120,21 +191,21 @@ export default function ContractPage() {
          <div>
             <h2 className="text-lg font-bold text-gray-900">{studentName}</h2>
             <p className="text-sm text-gray-500">ID: {studentId}</p>
-         </div>
-         <div className="flex flex-wrap gap-3">
-            <div className="bg-gray-50 px-4 py-3 rounded-lg border">
-              <p className="text-xs text-gray-500 mb-1">Remaining Balance</p>
-              <p className="font-bold">{remainingBalance.toLocaleString()} RWF</p>
-            </div>
-            <div className="bg-gray-50 px-4 py-3 rounded-lg border">
-              <p className="text-xs text-gray-500 mb-1">Paid Percentage</p>
-              <p className="font-bold text-green-600">{(data?.financial?.paidPercentage || 0).toFixed(1)}%</p>
-            </div>
-            <div className="bg-gray-50 px-4 py-3 rounded-lg border">
-              <p className="text-xs text-gray-500 mb-1">Semester</p>
-              <p className="font-bold">{semester === 1 ? 'Semester 1 (Oct-Nov)' : 'Semester 2 (Feb-Mar-Apr)'}</p>
-            </div>
-         </div>
+          </div>
+          <div className="flex flex-wrap gap-3">
+             <div className="bg-gray-50 px-4 py-3 rounded-lg border">
+               <p className="text-xs text-gray-500 mb-1">Remaining Balance</p>
+               <p className="font-bold">{remainingBalance.toLocaleString()} RWF</p>
+             </div>
+             <div className="bg-gray-50 px-4 py-3 rounded-lg border">
+               <p className="text-xs text-gray-500 mb-1">Paid Percentage</p>
+               <p className="font-bold text-green-600">{((paymentMade / totalAmount) * 100).toFixed(1)}%</p>
+             </div>
+             <div className="bg-gray-50 px-4 py-3 rounded-lg border">
+               <p className="text-xs text-gray-500 mb-1">Semester</p>
+               <p className="font-bold">{semester === 1 ? 'Semester 1 (Oct-Nov)' : 'Semester 2 (Feb-Mar-Apr)'}</p>
+             </div>
+          </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border p-6">
