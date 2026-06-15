@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FileText, CheckCircle2, TrendingUp, CalendarClock, Loader2, Check } from 'lucide-react';
 import { studentApi } from '@/lib/api';
+import { getDemoContract } from '@/lib/demo-mode';
 
 export default function ContractDetails() {
   const [data, setData] = useState<any>(null);
@@ -14,7 +15,12 @@ export default function ContractDetails() {
         const contract = contracts && contracts.length > 0 ? contracts[0] : null;
         setData(contract ? { contract } : null);
       } catch (error) {
-        console.error(error);
+        const demoContract = getDemoContract();
+        if (demoContract) {
+          setData({ contract: demoContract });
+        } else {
+          console.error(error);
+        }
       } finally {
         setLoading(false);
       }
