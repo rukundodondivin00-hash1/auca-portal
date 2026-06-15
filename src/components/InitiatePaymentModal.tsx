@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Check } from 'lucide-react';
 import { studentApi } from '@/lib/api';
+import { getDemoPaymentMade, setDemoPaymentMade, getDemoDashboard } from '@/lib/demo-mode';
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -18,13 +19,15 @@ export default function InitiatePaymentModal({ isOpen, onClose }: PaymentModalPr
 
   useEffect(() => {
     if (isOpen) {
-      studentApi.getDashboard().then(res => setDashboardData(res.data.data)).catch(console.error);
+      studentApi.getDashboard()
+        .then(res => setDashboardData(res.data.data))
+        .catch(() => setDashboardData(getDemoDashboard()));
     }
   }, [isOpen]);
 
-  const totalAmount = dashboardData?.financials?.totalFees || 566103;
-  const paymentMade = dashboardData?.financials?.amountPaid || 0;
-  const remainingBalance = dashboardData?.financials?.remainingBalance || totalAmount;
+  const totalAmount = dashboardData?.financials?.totalFees || dashboardData?.financial?.totalFees || 1500000;
+  const paymentMade = dashboardData?.financials?.amountPaid || dashboardData?.financial?.amountPaid || getDemoPaymentMade();
+  const remainingBalance = dashboardData?.financials?.remainingBalance || dashboardData?.financial?.remainingBalance || (totalAmount - paymentMade);
   const requiredAmount = totalAmount * 0.5;
   const isEligible = paymentMade >= requiredAmount;
   const shortfall = Math.ceil(requiredAmount - paymentMade);
@@ -33,13 +36,14 @@ export default function InitiatePaymentModal({ isOpen, onClose }: PaymentModalPr
     if (!paymentAmount) return;
     setIsProcessing(true);
     
-    // Simulate payment processing since no backend endpoint exists for MoMo yet
+    // Simulate payment - update demo payment
     setTimeout(() => {
+      const currentPaid = getDemoPaymentMade();
+      setDemoPaymentMade(currentPaid + Number(paymentAmount));
       setPaymentAmount('');
       setIsProcessing(false);
       onClose();
-      // Reload page to reflect new backend state if API was real
-      window.location.reload(); 
+      window.location.reload();
     }, 1500);
   };
 
@@ -60,7 +64,7 @@ export default function InitiatePaymentModal({ isOpen, onClose }: PaymentModalPr
               onChange={(e) => setPaymentAmount(e.target.value)}
             />
             <p className="text-xs text-gray-500">
-              {!isEligible ? `Minimum to become eligible: ${shortfall.toLocaleString()} RWF` : 'Payment amount toward remaining balance'}
+              {!isEligible ? Minimum to become eligible:  RWF : 'Payment amount toward remaining balance'}
             </p>
           </div>
 
@@ -88,8 +92,8 @@ export default function InitiatePaymentModal({ isOpen, onClose }: PaymentModalPr
           </div>
 
           <div className="bg-gray-50 p-3 rounded-md text-sm text-gray-600">
-            <p>Payer code: {dashboardData?.student?.studentId || 'N/A'}</p>
-            <p>Payer name: {dashboardData?.student?.studentName || 'N/A'}</p>
+            <p>Payer code: {dashboardData?.student?.studentId || '25306'}</p>
+            <p>Payer name: {dashboardData?.student?.studentName || 'Jean Baptiste Nkurunziza'}</p>
           </div>
         </div>
 

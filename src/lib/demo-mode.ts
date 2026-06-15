@@ -1,4 +1,5 @@
-export const DEMO_MODE_KEY = 'auca_demo_mode';
+﻿export const DEMO_MODE_KEY = 'auca_demo_mode';
+export const DEMO_DEBT_KEY = 'auca_demo_debt';
 
 export function isDemoMode(): boolean {
   return localStorage.getItem(DEMO_MODE_KEY) === 'true';
@@ -31,6 +32,7 @@ export interface DemoInstallment {
   amountPaid: number;
   status: 'PENDING' | 'PAID' | 'OVERDUE';
   penaltyAmount: number;
+  paidDate?: string;
 }
 
 export interface DemoContract {
@@ -51,24 +53,39 @@ export interface DemoContract {
   installments: DemoInstallment[];
 }
 
-export function getDemoDashboard(): { student: DemoStudent; financial: DemoFinancial; contract: { hasContract: boolean } } {
-  const saved = localStorage.getItem('auca_demo_contract');
-  const hasContract = !!saved;
+export function getDemoPaymentMade(): number {
+  const raw = localStorage.getItem(DEMO_DEBT_KEY);
+  return raw ? Number(JSON.parse(raw).amountPaid) : 0;
+}
 
+export function setDemoPaymentMade(amount: number) {
+  localStorage.setItem(DEMO_DEBT_KEY, JSON.stringify({ amountPaid: amount }));
+}
+
+export function resetDemoPayment() {
+  localStorage.removeItem(DEMO_DEBT_KEY);
+}
+
+export function getDemoDashboard(): { student: DemoStudent; financial: DemoFinancial; contract: { hasContract: boolean } } {
+  const paymentMade = getDemoPaymentMade();
+  const totalFees = 1500000;
+  const remainingBalance = totalFees - paymentMade;
+  const paidPercentage = Math.round((paymentMade / totalFees) * 100);
+  
   return {
     student: {
       studentName: 'Jean Baptiste Nkurunziza',
       studentId: '25306',
     },
     financial: {
-      totalFees: 1500000,
-      amountPaid: 750000,
-      remainingBalance: 750000,
-      paidPercentage: 50,
+      totalFees,
+      amountPaid: paymentMade,
+      remainingBalance,
+      paidPercentage,
       activeTerm: '2025/1',
-      isEligibleForContract: true,
+      isEligibleForContract: paidPercentage >= 50,
     },
-    contract: { hasContract },
+    contract: { hasContract: false },
   };
 }
 
@@ -142,4 +159,5 @@ export function simulateDemoPayment(installmentId: string): DemoContract | null 
 export function resetDemoMode() {
   localStorage.removeItem('auca_demo_contract');
   localStorage.removeItem(DEMO_MODE_KEY);
+  localStorage.removeItem(DEMO_DEBT_KEY);
 }

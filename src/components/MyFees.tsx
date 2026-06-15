@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Wallet, FileText, DollarSign, Loader2, AlertTriangle } from 'lucide-react';
 import { studentApi } from '@/lib/api';
+import { getDemoDashboard, getDemoPaymentMade } from '@/lib/demo-mode';
 
 export default function MyFees() {
   const [data, setData] = useState<any>(null);
@@ -12,24 +13,10 @@ export default function MyFees() {
       try {
         const response = await studentApi.getDashboard();
         const apiData = response.data?.data;
-        // Use demo data if backend returns null (for testing)
-        const demoFinancial = {
-          totalFees: 500000,
-          amountPaid: 250000,
-          remainingBalance: 250000,
-          paidPercentage: 50
-        };
-        const demoStudent = {
-          studentName: localStorage.getItem('student_name') || 'Student',
-          studentId: localStorage.getItem('student_id') || 'N/A'
-        };
-        setData({
-          ...apiData,
-          student: apiData?.student || demoStudent,
-          financial: apiData?.financial || demoFinancial
-        });
+        setData(apiData);
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
+        setData(getDemoDashboard());
       } finally {
         setLoading(false);
       }
@@ -41,11 +28,10 @@ export default function MyFees() {
     return <div className="p-12 flex justify-center items-center text-blue-900"><Loader2 className="animate-spin" size={32} /></div>;
   }
 
-  // Safely extract values from the backend response
   const totalAmount = data?.financial?.totalFees || 0;
-  const paymentMade = data?.financial?.amountPaid || 0;
-  const remainingBalance = data?.financial?.remainingBalance || 0;
-  const paymentPercentage = data?.financial?.paidPercentage || 0;
+  const paymentMade = getDemoPaymentMade();
+  const remainingBalance = totalAmount - paymentMade;
+  const paymentPercentage = totalAmount > 0 ? Math.round((paymentMade / totalAmount) * 100) : 0;
   const isEligible = paymentPercentage >= 50;
 
   if (totalAmount === 0) {

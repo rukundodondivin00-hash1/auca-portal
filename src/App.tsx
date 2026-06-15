@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from "react-router";
+﻿import { Routes, Route, Navigate } from "react-router";
 import { useEffect } from "react";
 import Sidebar from "./components/Sidebar";
 import AdminSidebar from "./components/admin/AdminSidebar";
@@ -22,11 +22,11 @@ import AdminStudents from "./pages/admin/AdminStudents";
 import AdminStudentDetails from "./pages/admin/AdminStudentDetails";
 import AdminPenalties from "./pages/admin/AdminPenalties";
 import { Toaster } from "./components/ui/sonner";
+import { resetDemoPayment } from "./lib/demo-mode";
 
 function AdminAuthWrapper({ children }: { children: React.ReactNode }) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
   const userRole = typeof window !== 'undefined' ? localStorage.getItem('user_role') : null;
-  // Handle both ROLE_ADMIN and ADMIN formats from backend
   const isAdmin = userRole === 'ROLE_ADMIN' || userRole === 'ADMIN';
   
   if (!token) {
@@ -43,7 +43,6 @@ function AdminAuthWrapper({ children }: { children: React.ReactNode }) {
 function StudentAuthWrapper({ children }: { children: React.ReactNode }) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
   const userRole = typeof window !== 'undefined' ? localStorage.getItem('user_role') : null;
-  // Handle both ROLE_STUDENT and STUDENT formats from backend
   const isStudent = userRole === 'ROLE_STUDENT' || userRole === 'STUDENT';
   
   if (!token) {
@@ -57,21 +56,17 @@ function StudentAuthWrapper({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-// Reset demo state on fresh page load (not soft navigation)
 function DemoReset() {
   useEffect(() => {
     const isFreshLoad = sessionStorage.getItem('demo_initialized');
     if (!isFreshLoad) {
-      localStorage.removeItem('demo_paymentMade');
-      localStorage.removeItem('demo_installmentPlan');
-      localStorage.removeItem('demo_installmentPayments');
+      resetDemoPayment();
       sessionStorage.setItem('demo_initialized', 'true');
     }
   }, []);
   return null;
 }
 
-// Create a small component for your Dashboard content to keep the routes clean
 function DashboardHome() {
   return (
     <div className="space-y-6">
@@ -95,8 +90,7 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/admin/login" element={<AdminLogin />} />
 
-      {/* Admin Routes - Protected by admin role */}
-<Route path="/admin/*" element={
+      <Route path="/admin/*" element={
         <AdminAuthWrapper>
           <div className="flex h-screen bg-gray-50 overflow-hidden">
             <AdminSidebar />
@@ -133,17 +127,14 @@ export default function App() {
                 <div className="p-4 lg:p-6 max-w-[1560px] mx-auto">
                   
                   <Routes>
-                    {/* Dashboard Routes */}
                     <Route path="/" element={<DashboardHome />} />
                     <Route path="/student-dashboard" element={<DashboardHome />} />
                     <Route path="/dashboard" element={<DashboardHome />} />
                     
-                    {/* Core Student Pages */}
                     <Route path="/my-fees" element={<MyFees />} />
                     <Route path="/my-transcript" element={<MyTranscript />} />
                     <Route path="/my-registration" element={<MyRegistration />} />
                     
-                    {/* Bulletin Placeholder */}
                     <Route path="/my-bulletin" element={
                       <div className="p-6 bg-white rounded-lg border shadow-sm">
                         <h2 className="text-xl font-bold">Academic Bulletin</h2>
@@ -151,7 +142,6 @@ export default function App() {
                       </div>
                     } />
                     
-                    {/* Contract Routes */}
                     <Route path="/contract" element={<ContractPage />} />
                     <Route path="/contract-details" element={<ContractDetails />} />
                     
