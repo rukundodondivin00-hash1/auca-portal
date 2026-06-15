@@ -10,12 +10,11 @@ export default function MyRegistration() {
     const fetchTerm = async () => {
       try {
         const response = await studentApi.getDashboard();
-        if (response.data?.data?.student?.activeTerm) {
-          setActiveTerm(response.data.data.student.activeTerm);
+        if (response.data?.data?.academic?.activeTerm) {
+          setActiveTerm(response.data.data.academic.activeTerm);
         }
       } catch (error) {
-        const savedTerm = typeof window !== 'undefined' ? localStorage.getItem('active_term') : null;
-        setActiveTerm(savedTerm || "2025/1");
+        setActiveTerm("2025/1");
       }
     };
     fetchTerm();

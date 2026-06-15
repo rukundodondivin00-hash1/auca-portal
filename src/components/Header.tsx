@@ -3,6 +3,19 @@ import { Search, House, ChevronRight, Bell, Calendar, ChevronDown, LogOut } from
 import { studentApi } from '@/lib/api';
 import { useNavigate } from 'react-router';
 
+function getStudentName(data: any) {
+  const student = data?.student || data;
+  return (
+    student?.studentName ||
+    student?.name ||
+    student?.fullName ||
+    data?.studentName ||
+    data?.fullName ||
+    localStorage.getItem('student_name') ||
+    "Student"
+  );
+}
+
 export default function Header() {
   const [studentName, setStudentName] = useState("Loading...");
   const [showDropdown, setShowDropdown] = useState(false);
@@ -12,31 +25,30 @@ export default function Header() {
     const fetchHeaderData = async () => {
       try {
         const response = await studentApi.getDashboard();
-        setStudentName(response.data.data?.student?.studentName || "Musengimana Fabrice");
+        setStudentName(getStudentName(response.data?.data));
       } catch (error) {
-        setStudentName(localStorage.getItem('student_name') || localStorage.getItem('fullName') || "Musengimana Fabrice");
+        setStudentName("Student");
       }
     };
     fetchHeaderData();
   }, []);
+
+  const initials = studentName.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase();
 
   const handleLogout = () => {
     localStorage.removeItem('jwt_token');
     localStorage.removeItem('user_role');
     localStorage.removeItem('student_id');
     localStorage.removeItem('student_name');
-    localStorage.removeItem('admin_name');
     navigate('/login');
   };
-
-  const initials = studentName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
 
   return (
     <header className="bg-white border-b border-gray-200/80 px-3 lg:px-4 py-2 sticky top-0 z-30">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5 min-w-0 flex-1 pl-10 lg:pl-0">
           <nav aria-label="Breadcrumb" className="hidden md:flex items-center gap-1.5 text-sm min-w-0">
-            <a href="/dashboard" className="text-gray-400 hover:text-blue-600 transition-colors shrink-0"><House size={15} /></a>
+            <button onClick={() => navigate('/student-dashboard')} className="text-gray-400 hover:text-blue-600 transition-colors shrink-0"><House size={15} /></button>
             <span className="flex items-center gap-1.5 min-w-0">
               <ChevronRight size={14} className="text-gray-300 shrink-0" />
               <span className="font-medium text-gray-900 truncate">student-dashboard</span>
@@ -68,7 +80,7 @@ export default function Header() {
           </button>
 
           <div className="relative">
-            <button 
+            <button
               className="flex items-center gap-2 p-1 rounded-lg transition-all duration-150 hover:bg-gray-50"
               onClick={() => setShowDropdown(!showDropdown)}
             >

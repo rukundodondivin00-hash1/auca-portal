@@ -16,23 +16,25 @@ export default function WelcomeBanner() {
     const fetchDashboardData = async () => {
       try {
         const response = await studentApi.getDashboard();
-        const data = response.data.data;
+        const data = response.data?.data;
+        const student = data?.student || data;
+        const studentName = student?.studentName || student?.name || student?.fullName || data?.studentName || data?.fullName || localStorage.getItem('student_name') || "";
+        const studentId = student?.studentId || student?.id || student?.username || data?.studentId || data?.id || data?.username || localStorage.getItem('student_id') || "";
+        const contract = data?.contract;
         
-        setStudentName(data.studentName || "Student");
-        setStudentId(data.studentId || localStorage.getItem('student_id') || localStorage.getItem('username') || "N/A");
-        setHasContract(data.hasActiveContract || false);
+        setStudentName(studentName);
+        setStudentId(studentId);
+        setHasContract(contract && (contract.hasContract || contract.id));
         
-          } catch (error) {
+      } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
-        // Fallback to localStorage data from login
-        setStudentName(localStorage.getItem('student_name') || "Musengimana Fabrice");
-        setStudentId(localStorage.getItem('student_id') || localStorage.getItem('username') || "25306");
+        setStudentName("");
+        setStudentId("");
         setHasContract(false);
       } finally {
         setLoading(false);
       }
     };
-
     fetchDashboardData();
   }, []);
 

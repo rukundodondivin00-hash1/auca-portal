@@ -5,25 +5,15 @@ import { Button } from '@/components/ui/button';
 import { FileSignature, History, Clock, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import type { Contract } from '@/lib/api';
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from '@/components/ui/chart';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-
-const chartConfig = {
-  pending: { label: 'Pending', color: '#eab308' },
-  active: { label: 'Active', color: '#22c55e' },
-  completed: { label: 'Completed', color: '#3b82f6' },
-  cancelled: { label: 'Cancelled', color: '#6b7280' },
-  overdue: { label: 'Overdue', color: '#ef4444' },
-};
 
 export default function AdminDashboard() {
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-RW', { style: 'currency', currency: 'RWF' }).format(amount);
+  };
 
   useEffect(() => {
     const fetchContracts = async () => {
@@ -33,6 +23,14 @@ export default function AdminDashboard() {
         setContracts(response.data.content);
       } catch (error) {
         console.error('Failed to fetch contracts:', error);
+        // Demo data fallback
+        const demoContracts: Contract[] = [
+          { id: 'contract-001', studentId: '25306', studentName: 'John Paul', termId: '2025/1', academicYear: '2025', semester: '1', totalFees: 500000, balanceAtSigning: 250000, amountPaidAtSigning: 250000, remainingAtSigning: 250000, status: 'ACTIVE', agreed: true, agreedDate: '2025-01-15', createdAt: '2025-01-01', updatedAt: '2025-01-15', installmentCount: 2, totalPaidOnInstallments: 250000, totalPenaltyOnInstallments: 0 },
+          { id: 'contract-002', studentId: '25293', studentName: 'Jane Smith', termId: '2025/1', academicYear: '2025', semester: '1', totalFees: 450000, balanceAtSigning: 450000, amountPaidAtSigning: 0, remainingAtSigning: 450000, status: 'PENDING', agreed: false, agreedDate: null, createdAt: '2025-01-02', updatedAt: '2025-01-02', installmentCount: 0, totalPaidOnInstallments: 0, totalPenaltyOnInstallments: 0 },
+          { id: 'contract-003', studentId: '25100', studentName: 'Mike Johnson', termId: '2025/1', academicYear: '2025', semester: '1', totalFees: 500000, balanceAtSigning: 0, amountPaidAtSigning: 500000, remainingAtSigning: 0, status: 'COMPLETED', agreed: true, agreedDate: '2025-01-10', createdAt: '2024-09-01', updatedAt: '2025-01-10', installmentCount: 2, totalPaidOnInstallments: 500000, totalPenaltyOnInstallments: 0 },
+          { id: 'contract-004', studentId: '25450', studentName: 'Sarah Wilson', termId: '2025/1', academicYear: '2025', semester: '1', totalFees: 500000, balanceAtSigning: 300000, amountPaidAtSigning: 200000, remainingAtSigning: 300000, status: 'OVERDUE', agreed: true, agreedDate: '2025-01-05', createdAt: '2024-09-01', updatedAt: '2025-01-05', installmentCount: 2, totalPaidOnInstallments: 200000, totalPenaltyOnInstallments: 5000 },
+        ];
+        setContracts(demoContracts);
       } finally {
         setLoading(false);
       }
@@ -43,29 +41,13 @@ export default function AdminDashboard() {
   const pendingContracts = contracts.filter(c => c.status === 'PENDING');
   const activeContracts = contracts.filter(c => c.status === 'ACTIVE');
   const overdueContracts = contracts.filter(c => c.status === 'OVERDUE');
-  const completedContracts = contracts.filter(c => c.status === 'COMPLETED');
-  const cancelledContracts = contracts.filter(c => c.status === 'CANCELLED');
   const totalPenalties = contracts.reduce((sum, c) => sum + c.totalPenaltyOnInstallments, 0);
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-RW', { style: 'currency', currency: 'RWF' }).format(amount);
-  };
-
-  const statusChartData = [
-    { status: 'Pending', count: pendingContracts.length, fill: chartConfig.pending.color },
-    { status: 'Active', count: activeContracts.length, fill: chartConfig.active.color },
-    { status: 'Completed', count: completedContracts.length, fill: chartConfig.completed.color },
-    { status: 'Cancelled', count: cancelledContracts.length, fill: chartConfig.cancelled.color },
-    { status: 'Overdue', count: overdueContracts.length, fill: chartConfig.overdue.color },
-  ];
-
-  const pieChartData = statusChartData.map(d => ({ name: d.status, value: d.count }));
 
   return (
     <div className="p-6 space-y-6 bg-gray-50/50 min-h-[calc(100vh-4rem)]">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900">Finance Overview</h1>
-        <p className="text-gray-500 mt-1">View contract statistics and monitor student payment compliance.</p>
+        <h1 className="text-3xl font-bold tracking-tight text-gray-900">Contract Management</h1>
+        <p className="text-gray-500 mt-1">View and manage student payment contracts.</p>
       </div>
 
       {/* KPI Cards */}
@@ -115,82 +97,44 @@ export default function AdminDashboard() {
         </Card>
       </div>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Bar Chart - Status Distribution */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Contracts by Status</CardTitle>
-            <CardDescription>Distribution of contract statuses</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={chartConfig} className="h-[200px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={statusChartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="status" />
-                  <YAxis />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="count" fill="#8884d8" />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-
-        {/* Pie Chart - Visual Distribution */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Status Distribution</CardTitle>
-            <CardDescription>Percentage breakdown</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={chartConfig} className="h-[200px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={pieChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={60}>
-                    {pieChartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={statusChartData[index]?.fill || '#ccc'} />
-                    ))}
-                  </Pie>
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                </PieChart>
-              </ResponsiveContainer>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Action Panels */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Panel 1: Pending Contracts */}
-        <Card className="border-yellow-100 shadow-sm">
-          <CardHeader className="bg-yellow-50/50 border-b border-yellow-100 rounded-t-xl">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-lg font-bold text-gray-900">Pending Contracts</CardTitle>
-                <CardDescription>Contracts awaiting review</CardDescription>
-              </div>
-              <Button variant="outline" size="sm" onClick={() => navigate('/admin/contracts')} className="text-xs">
-                View All
-              </Button>
+      {/* All Contracts List */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>All Contracts</CardTitle>
+              <CardDescription>List of all student contracts</CardDescription>
             </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="divide-y divide-gray-100">
-              {pendingContracts.length === 0 && !loading && (
-                <div className="p-8 text-center text-gray-500 text-sm">No pending contracts.</div>
-              )}
-              {pendingContracts.slice(0, 5).map(contract => (
+            <Button variant="outline" size="sm" onClick={() => navigate('/admin/contracts')} className="text-xs">
+              View All
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="divide-y divide-gray-100">
+            {contracts.length === 0 && !loading ? (
+              <div className="p-8 text-center text-gray-500 text-sm">No contracts found.</div>
+            ) : (
+              contracts.slice(0, 6).map(contract => (
                 <div key={contract.id} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-yellow-100 flex items-center justify-center">
-                      <Clock className="h-5 w-5 text-yellow-600" />
+                  <div className="flex-1 grid grid-cols-4 md:grid-cols-4 gap-4">
+                    <div>
+                      <p className="text-xs text-gray-500">Student</p>
+                      <p className="text-sm font-bold text-gray-900">{contract.studentName}</p>
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-gray-900">{contract.studentName}</p>
-                      <p className="text-xs text-gray-500">ID: {contract.studentId} • Term: {contract.termId}</p>
+                      <p className="text-xs text-gray-500">ID • Term</p>
+                      <p className="text-sm font-bold text-gray-900">{contract.studentId} • {contract.termId}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Total • Paid</p>
+                      <p className="text-sm font-bold text-gray-900">{formatCurrency(contract.totalFees)} • {formatCurrency(contract.amountPaidAtSigning)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Status</p>
+                      <span className={`px-2 py-1 text-xs font-bold rounded-full ${contract.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : contract.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' : contract.status === 'OVERDUE' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>
+                        {contract.status}
+                      </span>
                     </div>
                   </div>
                   <Button 
@@ -198,55 +142,15 @@ export default function AdminDashboard() {
                     className="bg-[#00447b] hover:bg-[#00335c] text-white"
                     onClick={() => navigate(`/admin/contracts/${contract.id}`)}
                   >
-                    View Details
+                    View
                   </Button>
                 </div>
-              ))}
-              {loading && <div className="p-8 text-center text-sm text-gray-500">Loading...</div>}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Panel 2: Overdue Contracts */}
-        <Card className="border-red-100 shadow-sm">
-          <CardHeader className="bg-red-50/50 border-b border-red-100 rounded-t-xl">
-            <div>
-              <CardTitle className="text-lg font-bold text-gray-900">Overdue Contracts</CardTitle>
-              <CardDescription>Contracts requiring attention</CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="divide-y divide-gray-100">
-              {overdueContracts.length === 0 && !loading && (
-                <div className="p-8 text-center text-gray-500 text-sm">All active accounts are up to date.</div>
-              )}
-              {overdueContracts.slice(0, 5).map(contract => (
-                <div key={contract.id} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center">
-                      <AlertTriangle className="h-5 w-5 text-red-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-gray-900">{contract.studentName}</p>
-                      <p className="text-xs text-gray-500">Remaining: {formatCurrency(contract.remainingAtSigning)}</p>
-                    </div>
-                  </div>
-                  <Button 
-                    variant="outline"
-                    size="sm" 
-                    className="text-red-600 border-red-200 hover:bg-red-50"
-                    onClick={() => navigate(`/admin/contracts/${contract.id}`)}
-                  >
-                    Details
-                  </Button>
-                </div>
-              ))}
-              {loading && <div className="p-8 text-center text-sm text-gray-500">Loading...</div>}
-            </div>
-          </CardContent>
-        </Card>
-
-      </div>
+              ))
+            )}
+            {loading && <div className="p-8 text-center text-sm text-gray-500">Loading...</div>}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

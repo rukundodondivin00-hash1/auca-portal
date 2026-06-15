@@ -9,6 +9,10 @@ interface LoginResponse {
   username?: string;
   fullName?: string;
   email?: string;
+  studentId?: string;
+  studentName?: string;
+  id?: string;
+  name?: string;
 }
 
 export default function Login() {
@@ -39,9 +43,11 @@ export default function Login() {
         localStorage.setItem('jwt_token', token);
         // Convert STUDENT to ROLE_STUDENT for consistency
         const normalizedRole = role === 'STUDENT' ? 'ROLE_STUDENT' : role;
+        const studentId = data.username || data.studentId || data.id;
+        const studentName = data.fullName || data.studentName || data.name;
         localStorage.setItem('user_role', normalizedRole);
-        if (data.username) localStorage.setItem('student_id', data.username);
-        if (data.fullName) localStorage.setItem('student_name', data.fullName);
+        if (studentId) localStorage.setItem('student_id', studentId);
+        if (studentName) localStorage.setItem('student_name', studentName);
         navigate(normalizedRole === 'ROLE_ADMIN' ? '/admin/dashboard' : '/student-dashboard');
       } else {
         throw new Error("Invalid response from server");

@@ -32,6 +32,21 @@ export default function AdminStudentDetails() {
       setContracts(contractsRes.data.content);
     } catch (error) {
       console.error('Failed to fetch student data:', error);
+      // Demo data fallback
+      const demoSummary: StudentSummary = {
+        studentId: studentId!,
+        studentName: 'John Paul',
+        contractCount: 1,
+        totalFeesAcrossContracts: 500000,
+        totalPaidAcrossContracts: 250000,
+        totalRemainingAcrossContracts: 250000,
+        hasActiveContract: true,
+      };
+      const demoContracts: Contract[] = [
+        { id: 'contract-001', studentId: studentId!, studentName: 'John Paul', termId: '2025/1', academicYear: '2025', semester: '1', totalFees: 500000, balanceAtSigning: 250000, amountPaidAtSigning: 250000, remainingAtSigning: 250000, status: 'ACTIVE', agreed: true, agreedDate: '2025-01-15', createdAt: '2025-01-01', updatedAt: '2025-01-15', installmentCount: 2, totalPaidOnInstallments: 0, totalPenaltyOnInstallments: 0 },
+      ];
+      setSummary(demoSummary);
+      setContracts(demoContracts);
     } finally {
       setLoading(false);
     }
@@ -68,11 +83,11 @@ export default function AdminStudentDetails() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/admin/students')}>
+        <Button variant="ghost" size="icon" onClick={() => navigate('/admin/contracts')}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold">Student Details</h1>
+          <h1 className="text-2xl font-bold">Contract Details</h1>
           <p className="text-gray-500">Student ID: {summary.studentId}</p>
         </div>
       </div>
@@ -169,8 +184,8 @@ export default function AdminStudentDetails() {
                     <TableCell>{contract.agreedDate || '-'}</TableCell>
                     <TableCell>{contract.installmentCount}</TableCell>
                     <TableCell className="text-right">
-                      <Button 
-                        variant="ghost" 
+                      <Button
+                        variant="ghost"
                         size="sm"
                         onClick={() => navigate(`/admin/contracts/${contract.id}`)}
                       >

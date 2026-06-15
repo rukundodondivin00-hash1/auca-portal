@@ -8,18 +8,24 @@ export default function Sidebar() {
   const [isHovered, setIsHovered] = useState(false);
   const location = useLocation();
   const [hasContract, setHasContract] = useState(false);
+  const [loadingContract, setLoadingContract] = useState(true);
 
   useEffect(() => {
     const checkContractStatus = async () => {
       try {
         const response = await studentApi.getDashboard();
-        setHasContract(response.data.data?.contract != null);
+        const data = response.data?.data;
+        const contract = data?.contract;
+        setHasContract(contract && (contract.hasContract || contract.id));
       } catch (error) {
         console.error("Failed to fetch contract status:", error);
+        setHasContract(false);
+      } finally {
+        setLoadingContract(false);
       }
     };
     checkContractStatus();
-  }, [location.pathname]); // Re-check when navigation changes
+  }, [location.pathname]);
 
   const isExpanded = isPinned || isHovered;
 
@@ -54,7 +60,7 @@ export default function Sidebar() {
             <NavItem icon={<Calendar size={20} />} label="Registration" href="/my-registration" isActive={location.pathname === '/my-registration'} isExpanded={isExpanded} />
             <NavItem icon={<BookOpen size={20} />} label="Academic Bulletin" href="/my-bulletin" isActive={location.pathname === '/my-bulletin'} isExpanded={isExpanded} />
             <NavItem icon={<DollarSign size={20} />} label="My Fees" href="/my-fees" isActive={location.pathname === '/my-fees'} isExpanded={isExpanded} />
-            {!hasContract && (
+            {!loadingContract && !hasContract && (
               <NavItem icon={<FileSignature size={20} />} label="Sign Contract" href="/contract" isActive={location.pathname === '/contract'} isExpanded={isExpanded} />
             )}
             <NavItem icon={<FileText size={20} />} label="Contract Details" href="/contract-details" isActive={location.pathname === '/contract-details'} isExpanded={isExpanded} />

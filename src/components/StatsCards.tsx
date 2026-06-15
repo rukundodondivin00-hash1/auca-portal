@@ -9,7 +9,8 @@ export default function StatsCards() {
     const fetchStats = async () => {
       try {
         const response = await studentApi.getDashboard();
-        setTerm(response.data.data?.student?.activeTerm || "2025/1");
+        const data = response.data?.data;
+        setTerm(data?.academic?.activeTerm || data?.academic?.termId || data?.termId || "2025/1");
       } catch (error) {
         setTerm("2025/1");
       }

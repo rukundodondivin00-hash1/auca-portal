@@ -7,7 +7,6 @@ const api = axios.create({
   },
 });
 
-// 2. JWT Interceptor
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('jwt_token');
   if (token) {
@@ -16,7 +15,6 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// 3. Interfaces (DTOs)
 export interface Contract {
   id: string;
   studentId: string;
@@ -83,72 +81,63 @@ export interface ContractStatusUpdate {
 // 4. API ENDPOINTS
 // ==========================================
 
-// --- AUTH API ---
 export const authApi = {
   login: (credentials: any) => api.post('/api/auth/login', credentials),
 };
 
-// --- STUDENT API ---
 export const studentApi = {
   getDashboard: () => api.get('/api/dashboard'),
   createContract: (payload: any) => api.post('/api/contracts', payload),
   getMyContracts: () => api.get('/api/contracts/my-contracts'),
 };
 
-// --- ADMIN API ---
 export const adminApi = {
-  // Contracts
-  getContracts: (page = 0, size = 20, sortBy = 'createdAt', direction = 'desc') => 
+  getContracts: (page = 0, size = 20, sortBy = 'createdAt', direction = 'desc') =>
     api.get<PaginatedResponse<Contract>>('/api/admin/contracts', { params: { page, size, sortBy, direction } }),
-  
-  getContract: (id: string) => 
+
+  getContract: (id: string) =>
     api.get<Contract>(`/api/admin/contracts/${id}`),
-  
-  getContractsByStudent: (studentId: string) => 
+
+  getContractsByStudent: (studentId: string) =>
     api.get<Contract[]>(`/api/admin/contracts/student/${studentId}`),
-  
-  getContractsByStatus: (status: string) => 
+
+  getContractsByStatus: (status: string) =>
     api.get<Contract[]>(`/api/admin/contracts/status/${status}`),
 
-  // Installments
-  getInstallments: (page = 0, size = 20, sortBy = 'createdAt', direction = 'desc') => 
+  getInstallments: (page = 0, size = 20, sortBy = 'createdAt', direction = 'desc') =>
     api.get<PaginatedResponse<Installment>>('/api/admin/installments', { params: { page, size, sortBy, direction } }),
 
-  getInstallmentsByContract: (contractId: string) => 
+  getInstallmentsByContract: (contractId: string) =>
     api.get<Installment[]>(`/api/admin/installments/contract/${contractId}`),
 
-  // Penalties
-  getPenalties: (page = 0, size = 20, sortBy = 'createdAt', direction = 'desc') => 
+  getPenalties: (page = 0, size = 20, sortBy = 'createdAt', direction = 'desc') =>
     api.get<PaginatedResponse<Penalty>>('/api/admin/penalties', { params: { page, size, sortBy, direction } }),
 
-  getPenaltiesByInstallment: (installmentId: string) => 
+  getPenaltiesByInstallment: (installmentId: string) =>
     api.get<Penalty[]>(`/api/admin/penalties/installment/${installmentId}`),
 
-  getPenaltiesByContract: (contractId: string) => 
+  getPenaltiesByContract: (contractId: string) =>
     api.get<Penalty[]>(`/api/admin/penalties/contract/${contractId}`),
 
-  // Students
-  searchStudents: (keyword = '', page = 0, size = 20) => 
+  searchStudents: (keyword = '', page = 0, size = 20) =>
     api.get<PaginatedResponse<StudentSummary>>('/api/admin/students', { params: { keyword, page, size } }),
 
-  getStudentSummary: (studentId: string) => 
+  getStudentSummary: (studentId: string) =>
     api.get<StudentSummary>(`/api/admin/students/${studentId}/summary`),
 
-  // --- MUTATIONS (UPDATE/DELETE) ---
-  // Note: These map to standard REST conventions. Ensure your backend has corresponding @PutMapping, @PatchMapping, or @PostMapping endpoints for these.
-  updateContractStatus: (id: string, data: ContractStatusUpdate) => 
+  updateContractStatus: (id: string, data: ContractStatusUpdate) =>
     api.patch(`/api/admin/contracts/${id}/status`, data),
 
-  deleteContract: (id: string) => 
+  deleteContract: (id: string) =>
     api.delete(`/api/admin/contracts/${id}`),
 
-  bulkUpdateContractStatus: (contractIds: string[], status: string) => 
+  bulkUpdateContractStatus: (contractIds: string[], status: string) =>
     api.patch('/api/admin/contracts/bulk-status', { contractIds, status }),
 
-  updateInstallmentStatus: (id: string, status: 'PAID' | 'PENDING') => 
+  updateInstallmentStatus: (id: string, status: 'PAID' | 'PENDING') =>
     api.patch(`/api/admin/installments/${id}/status`, { status }),
 
-  waiveInstallmentPenalty: (id: string) => 
+  waiveInstallmentPenalty: (id: string) =>
     api.post(`/api/admin/installments/${id}/waive-penalty`),
 };
 
