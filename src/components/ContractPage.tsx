@@ -70,33 +70,17 @@ export default function ContractPage() {
   const contract = data?.contract;
   const hasContract = contract && (contract.hasContract || contract.id);
 
-  const updateInstallment = (index: number, field: 'amount' | 'date', value: string) => {
-    setInstallments(prev => {
-      const next = [...prev];
-      next[index] = { ...next[index], [field]: value };
-      return next;
-    });
-  };
-
-  const sumEntered = installments.reduce((sum, inst) => sum + (Number(inst.amount) || 0), 0);
-  const isAmountsValid = sumEntered === remainingBalance && remainingBalance > 0;
-  const canSubmit = isPlanConfirmed && hasAccepted && !isSubmitting && isAmountsValid;
-
-  const handleSubmitContract = async () => {
-    if (!canSubmit) return;
-    setIsSubmitting(true);
-    setSubmitError(null);
-
-    try {
-      await studentApi.createContract({
-        installments: installments.map(inst => ({ amount: Number(inst.amount), deadlineDate: inst.date })),
-      });
-      navigate('/contract-details');
-    } catch (error: any) {
-      setSubmitError(error.response?.data?.message || "Failed to submit contract to server.");
-      setIsSubmitting(false);
-    }
-  };
+  if (totalAmount === 0) {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center p-6">
+        <div className="bg-yellow-50 border border-yellow-200 p-8 rounded-xl shadow-sm text-center">
+          <AlertTriangle size={40} className="text-yellow-600 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-yellow-700">No Registration Found</h2>
+          <p className="mt-2 text-yellow-600">You have not registered for courses yet. Please apply for registration first.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (hasContract) {
     return (

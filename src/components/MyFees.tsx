@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Wallet, FileText, DollarSign, Loader2 } from 'lucide-react';
+import { Wallet, FileText, DollarSign, Loader2, AlertTriangle } from 'lucide-react';
 import { studentApi } from '@/lib/api';
 
 export default function MyFees() {
@@ -47,6 +47,24 @@ export default function MyFees() {
   const remainingBalance = data?.financial?.remainingBalance || 0;
   const paymentPercentage = data?.financial?.paidPercentage || 0;
   const isEligible = paymentPercentage >= 50;
+
+  if (totalAmount === 0) {
+    return (
+      <div className="p-6 space-y-6 animate-fade-in-slow">
+        <div className="bg-blue-900 text-white p-6 rounded-lg shadow-sm">
+          <h1 className="text-2xl font-bold">My Fees</h1>
+          <p className="text-blue-100 text-sm mt-1">Track your balance, fee obligations, and payment history</p>
+        </div>
+
+        <div className="flex items-center justify-center min-h-[200px]">
+          <div className="bg-yellow-50 border border-yellow-200 p-8 rounded-xl shadow-sm text-center">
+            <h2 className="text-xl font-bold text-yellow-700">No Registration Found</h2>
+            <p className="mt-2 text-yellow-600">You have not registered for courses. Please apply for registration first.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6 animate-fade-in-slow">

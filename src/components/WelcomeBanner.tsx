@@ -10,6 +10,7 @@ export default function WelcomeBanner() {
   
   const [studentName, setStudentName] = useState("");
   const [studentId, setStudentId] = useState("");
+  const [totalAmount, setTotalAmount] = useState(0);
   const [hasContract, setHasContract] = useState(false);
 
   useEffect(() => {
@@ -18,18 +19,21 @@ export default function WelcomeBanner() {
         const response = await studentApi.getDashboard();
         const data = response.data?.data;
         const student = data?.student || data;
+        const totalAmount = data?.financial?.totalFees || 0;
         const studentName = student?.studentName || student?.name || student?.fullName || data?.studentName || data?.fullName || localStorage.getItem('student_name') || "";
         const studentId = student?.studentId || student?.id || student?.username || data?.studentId || data?.id || data?.username || localStorage.getItem('student_id') || "";
         const contract = data?.contract;
         
         setStudentName(studentName);
         setStudentId(studentId);
+        setTotalAmount(totalAmount);
         setHasContract(contract && (contract.hasContract || contract.id));
         
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
         setStudentName("");
         setStudentId("");
+        setTotalAmount(0);
         setHasContract(false);
       } finally {
         setLoading(false);

@@ -90,25 +90,25 @@ export default function MyRegistration() {
 
         {/* Tab Content */}
         <div className="p-4">
-          {activeTab === 'my-courses' && (
-            <div className="space-y-4">
-              <div className="flex items-start gap-2 bg-[#fffbeb] border border-[#fde68a] rounded-md px-3 py-2">
-                <Info className="text-[#d97706] mt-0.5 shrink-0" size={14} />
-                <p className="text-xs text-[#92400e]">
-                  Direct add/remove is only available while the registration window is open.
-                </p>
-              </div>
-              <div className="py-12">
-                <div className="flex flex-col items-center justify-center py-10 text-gray-400 dark:text-slate-500 gap-2">
-                  <CircleAlert size={24} />
-                  <p className="text-sm">No registration found for the active term.</p>
-                </div>
-                <p className="mt-4 text-center text-xs text-gray-500 dark:text-slate-400">
-                  Registration window is closed. You cannot add courses at this time.
-                </p>
-              </div>
-            </div>
-          )}
+{activeTab === 'my-courses' && (
+             <div className="space-y-4">
+               <div className="flex items-start gap-2 bg-[#fffbeb] border border-[#fde68a] rounded-md px-3 py-2">
+                 <Info className="text-[#d97706] mt-0.5 shrink-0" size={14} />
+                 <p className="text-xs text-[#92400e]">
+                   Direct add/remove is only available while the registration window is open.
+                 </p>
+               </div>
+               <div className="py-12">
+                 <div className="flex flex-col items-center justify-center py-10 text-gray-400 dark:text-slate-500 gap-2">
+                   <CircleAlert size={24} />
+                   <p className="text-sm">No registration found for the active term. Please apply for registration first.</p>
+                 </div>
+                 <p className="mt-4 text-center text-xs text-gray-500 dark:text-slate-400">
+                   Registration window is closed. You cannot add courses at this time.
+                 </p>
+               </div>
+             </div>
+           )}
 
           {activeTab === 'browse' && (
             <div className="py-12 flex flex-col items-center justify-center text-gray-400 dark:text-slate-500 gap-2">
