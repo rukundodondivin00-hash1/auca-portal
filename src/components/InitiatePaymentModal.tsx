@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Check } from 'lucide-react';
 import { studentApi } from '@/lib/api';
-import { getDemoPaymentMade, setDemoPaymentMade, getDemoDashboard } from '@/lib/demo-mode';
+import { getDemoPaymentMade, setDemoPaymentMade, getDemoDashboard, getDemoContract, simulateDemoPayment } from '@/lib/demo-mode';
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -38,8 +38,26 @@ export default function InitiatePaymentModal({ isOpen, onClose }: PaymentModalPr
     
     // Simulate payment - update demo payment
     setTimeout(() => {
+      const demoContract = getDemoContract();
+      const paymentAmt = Number(paymentAmount);
       const currentPaid = getDemoPaymentMade();
-      setDemoPaymentMade(currentPaid + Number(paymentAmount));
+      
+      // If contract exists, update first unpaid installment
+      if (demoContract) {
+        const unpaidInst = demoContract.installments.find(i => i.status === 'PENDING');
+        if (unpaidInst && paymentAmt >= unpaidInst.amountDue) {
+          simulateDemoPayment(unpaidInst.id);
+        } else if (unpaidInst) {
+          // Partial payment - mark installment as partially paid
+          unpaidInst.amountPaid = paymentAmt;
+          unpaidInst.status = 'PENDING';
+          unpaidInst.paidDate = new Date().toISOString();
+          localStorage.setItem('auca_demo_contract', JSON.stringify(demoContract));
+        }
+      } else {
+        setDemoPaymentMade(currentPaid + paymentAmt);
+      }
+      
       setPaymentAmount('');
       setIsProcessing(false);
       onClose();
