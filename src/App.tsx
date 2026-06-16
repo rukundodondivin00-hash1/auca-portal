@@ -58,10 +58,11 @@ function StudentAuthWrapper({ children }: { children: React.ReactNode }) {
 
 function DemoReset() {
   useEffect(() => {
-    const isFreshLoad = sessionStorage.getItem('demo_initialized');
-    if (!isFreshLoad) {
+    const lastReset = sessionStorage.getItem('demo_reset_time');
+    const now = Date.now();
+    if (!lastReset || now - Number(lastReset) > 1000) {
       resetDemoPayment();
-      sessionStorage.setItem('demo_initialized', 'true');
+      sessionStorage.setItem('demo_reset_time', String(now));
     }
   }, []);
   return null;

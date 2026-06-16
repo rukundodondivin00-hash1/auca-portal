@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router'; 
+import { Link, useLocation, useNavigate } from 'react-router'; 
 import { Pin, TrendingUp, Award, BookOpen, DollarSign, Bell, MessageSquare, Settings, LogOut, GraduationCap, FileSignature, FileText, Calendar } from 'lucide-react';
 import { studentApi } from '@/lib/api';
+import { resetDemoMode } from '@/lib/demo-mode';
 
 export default function Sidebar() {
   const [isPinned, setIsPinned] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const [hasContract, setHasContract] = useState(false);
   const [loadingContract, setLoadingContract] = useState(true);
 
@@ -26,6 +28,15 @@ export default function Sidebar() {
     };
     checkContractStatus();
   }, [location.pathname]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('jwt_token');
+    localStorage.removeItem('user_role');
+    localStorage.removeItem('student_id');
+    localStorage.removeItem('student_name');
+    resetDemoMode();
+    navigate('/login');
+  };
 
   const isExpanded = isPinned || isHovered;
 
@@ -77,7 +88,10 @@ export default function Sidebar() {
 
       <div className="p-3 border-t border-gray-200 space-y-1 shrink-0">
         <NavItem icon={<Settings size={20} />} label="Settings" href="/settings" isActive={location.pathname === '/settings'} isExpanded={isExpanded} />
-        <NavItem icon={<LogOut size={20} />} label="Logout" href="/login" isActive={location.pathname === '/login'} isExpanded={isExpanded} />
+        <button onClick={handleLogout} className={`flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors whitespace-nowrap text-gray-600 hover:bg-gray-100 hover:text-gray-900 w-full`}>
+          <span className="min-w-[20px] shrink-0"><LogOut size={20} /></span>
+          <span className={`text-sm transition-opacity duration-300 ${isExpanded ? 'opacity-100' : 'opacity-0 hidden'}`}>Logout</span>
+        </button>
       </div>
     </aside>
   );
