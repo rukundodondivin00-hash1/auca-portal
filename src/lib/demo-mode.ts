@@ -75,8 +75,8 @@ export function getDemoDashboard(): { student: DemoStudent; financial: DemoFinan
   
   return {
     student: {
-      studentName: 'Jean Baptiste Nkurunziza',
-      studentId: '25306',
+      studentName: 'Demo Student',
+      studentId: '25307',
     },
     financial: {
       totalFees,
@@ -96,7 +96,7 @@ export function createDemoContract(installments: { amount: string; date: string 
   const now = new Date().toISOString();
   const contractId = crypto.randomUUID();
 
-const mappedInstallments: DemoInstallment[] = installments.map((inst, i) => ({
+  const mappedInstallments: DemoInstallment[] = installments.map((inst, i) => ({
     id: crypto.randomUUID(),
     contractId,
     installmentNumber: i + 1,
@@ -142,7 +142,7 @@ export function simulateDemoPayment(installmentId: string): DemoContract | null 
   const installment = contract.installments.find(i => i.id === installmentId);
   if (!installment || installment.status === 'PAID') return contract;
 
-installment.status = 'PAID';
+  installment.status = 'PAID';
   installment.amountPaid = installment.amountDue;
   installment.paidDate = new Date().toISOString();
 

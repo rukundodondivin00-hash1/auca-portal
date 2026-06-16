@@ -50,14 +50,18 @@ export default function Login() {
         throw new Error("Invalid response from server");
       }
     } catch (error: any) {
-      // Demo mode fallback - set demo credentials
-      localStorage.setItem('jwt_token', 'demo-token');
-      localStorage.setItem('user_role', 'ROLE_STUDENT');
-      localStorage.setItem('student_id', '25306');
-      localStorage.setItem('student_name', 'Jean Baptiste Nkurunziza');
-      setDemoMode(true);
-      setDemoPaymentMade(0);
-      navigate('/student-dashboard');
+      // Demo student: ID 25307 with password demo123
+      if (email === '25307' && password === 'demo123') {
+        localStorage.setItem('jwt_token', 'demo-token-student');
+        localStorage.setItem('user_role', 'ROLE_STUDENT');
+        localStorage.setItem('student_id', '25307');
+        localStorage.setItem('student_name', 'Demo Student');
+        setDemoMode(true);
+        setDemoPaymentMade(0);
+        navigate('/student-dashboard');
+      } else {
+        alert('Invalid credentials. Only demo student (ID: 25307) can access when backend is unavailable.');
+      }
     } finally {
       setIsLoading(false);
     }
