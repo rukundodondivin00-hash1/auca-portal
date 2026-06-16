@@ -73,11 +73,10 @@ export default function ContractPage() {
   const studentName = data?.student?.studentName || getDemoDashboard().student.studentName;
   const studentId = data?.student?.studentId || getDemoDashboard().student.studentId;
   const totalAmount = data?.financial?.totalFees || getDemoDashboard().financial.totalFees;
-  const paymentMade = data?.financial?.amountPaid || getDemoPaymentMade();
+  const paymentMade = getDemoPaymentMade();
   const remainingBalance = totalAmount - paymentMade;
   const isEligible = paymentMade >= totalAmount * 0.5;
-  const contract = data?.contract || { hasContract: false };
-  const hasContract = contract && (contract.hasContract || contract.id);
+  const hasContract = !!localStorage.getItem('auca_demo_contract');
 
   const sumEntered = installments.reduce((sum, inst) => sum + (Number(inst.amount) || 0), 0);
   const isAmountsValid = sumEntered > 0 && sumEntered === remainingBalance && installments.every(inst => inst.date && Number(inst.amount) > 0);
