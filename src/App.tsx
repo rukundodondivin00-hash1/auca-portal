@@ -22,7 +22,7 @@ import AdminStudents from "./pages/admin/AdminStudents";
 import AdminStudentDetails from "./pages/admin/AdminStudentDetails";
 import AdminPenalties from "./pages/admin/AdminPenalties";
 import { Toaster } from "./components/ui/sonner";
-import { resetDemoMode } from "./lib/demo-mode";
+import { resetDemoMode, isDemoMode } from "./lib/demo-mode";
 
 function AdminAuthWrapper({ children }: { children: React.ReactNode }) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
@@ -58,9 +58,9 @@ function StudentAuthWrapper({ children }: { children: React.ReactNode }) {
 
 function DemoReset() {
   useEffect(() => {
-    // Only reset on fresh page load, not SPA navigation
-    if (!sessionStorage.getItem('demo_nav_init')) {
-      sessionStorage.setItem('demo_nav_init', '1');
+    // Only reset demo data if there's no active session (fresh login, not session restore)
+    const hasToken = !!localStorage.getItem('jwt_token');
+    if (!hasToken) {
       resetDemoMode();
     }
   }, []);

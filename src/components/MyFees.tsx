@@ -3,32 +3,28 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Wallet, FileText, DollarSign, Loader2, AlertTriangle } from 'lucide-react';
 import { studentApi } from '@/lib/api';
 import { getDemoDashboard, getDemoPaymentMade, isDemoMode } from '@/lib/demo-mode';
+import InitiatePaymentModal from './InitiatePaymentModal';
 
 export default function MyFees() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  useEffect(() => {
-    // Demo student - skip API call entirely
+  const fetchData = () => {
     if (isDemoMode()) {
       setData(getDemoDashboard());
       setLoading(false);
       return;
     }
     
-    const fetchFinances = async () => {
-      try {
-        const response = await studentApi.getDashboard();
-        const apiData = response.data?.data;
-        setData(apiData);
-      } catch (error) {
-        console.error("Failed to fetch dashboard data:", error);
-        setData(getDemoDashboard());
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchFinances();
+    studentApi.getDashboard()
+      .then(res => setData(res.data?.data))
+      .catch(() => setData(getDemoDashboard()))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchData();
   }, []);
 
   if (loading) {
@@ -61,9 +57,17 @@ export default function MyFees() {
 
   return (
     <div className="p-6 space-y-6 animate-fade-in-slow">
-      <div className="bg-blue-900 text-white p-6 rounded-lg shadow-sm">
-        <h1 className="text-2xl font-bold">My Fees</h1>
-        <p className="text-blue-100 text-sm mt-1">Track your balance, fee obligations, and payment history</p>
+      <div className="bg-blue-900 text-white p-6 rounded-lg shadow-sm flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold">My Fees</h1>
+          <p className="text-blue-100 text-sm mt-1">Track your balance, fee obligations, and payment history</p>
+        </div>
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="inline-flex items-center gap-2 rounded-md bg-white px-4 py-2 text-sm font-semibold text-blue-900 shadow-sm transition-colors hover:bg-gray-50 cursor-pointer"
+        >
+          Pay Now
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -98,6 +102,14 @@ export default function MyFees() {
           </CardContent>
         </Card>
       </div>
+
+      <InitiatePaymentModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        onPaymentSuccess={() => {
+          setTimeout(fetchData, 100);
+        }}
+      />
     </div>
   );
 }

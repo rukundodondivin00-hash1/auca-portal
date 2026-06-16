@@ -10,9 +10,10 @@ import { getDemoPaymentMade, setDemoPaymentMade, getDemoDashboard, getDemoContra
 interface PaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onPaymentSuccess?: () => void;
 }
 
-export default function InitiatePaymentModal({ isOpen, onClose }: PaymentModalProps) {
+export default function InitiatePaymentModal({ isOpen, onClose, onPaymentSuccess }: PaymentModalProps) {
   const [paymentAmount, setPaymentAmount] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [dashboardData, setDashboardData] = useState<any>(null);
@@ -30,9 +31,12 @@ export default function InitiatePaymentModal({ isOpen, onClose }: PaymentModalPr
     }
   }, [isOpen]);
 
-  const totalAmount = dashboardData?.financials?.totalFees || dashboardData?.financial?.totalFees || 1500000;
-  const paymentMade = dashboardData?.financials?.amountPaid || dashboardData?.financial?.amountPaid || getDemoPaymentMade();
-  const remainingBalance = dashboardData?.financials?.remainingBalance || dashboardData?.financial?.remainingBalance || (totalAmount - paymentMade);
+  const totalAmount = dashboardData?.financial?.totalFees || dashboardData?.financial?.totalFees || 1500000;
+  // Use getDemoPaymentMade() for demo mode to get actual current payment amount
+  const storedPaymentMade = getDemoPaymentMade();
+  const apiPaymentMade = dashboardData?.financial?.amountPaid || 0;
+  const paymentMade = isDemoMode() ? storedPaymentMade : apiPaymentMade;
+  const remainingBalance = totalAmount - paymentMade;
   const requiredAmount = totalAmount * 0.5;
   const isEligible = paymentMade >= requiredAmount;
   const shortfall = Math.ceil(requiredAmount - paymentMade);
@@ -55,7 +59,7 @@ export default function InitiatePaymentModal({ isOpen, onClose }: PaymentModalPr
         } else if (unpaidInst) {
           // Partial payment - mark installment as partially paid
           unpaidInst.amountPaid = paymentAmt;
-          unpaidInst.status = 'PENDING';
+          unpaidInst.status = 'PARTIAL';
           unpaidInst.paidDate = new Date().toISOString();
           localStorage.setItem('auca_demo_contract', JSON.stringify(demoContract));
         }
@@ -66,7 +70,7 @@ export default function InitiatePaymentModal({ isOpen, onClose }: PaymentModalPr
       setPaymentAmount('');
       setIsProcessing(false);
       onClose();
-      window.location.reload();
+      onPaymentSuccess?.();
     }, 1500);
   };
 

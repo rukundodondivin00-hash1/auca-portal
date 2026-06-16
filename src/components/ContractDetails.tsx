@@ -7,8 +7,7 @@ export default function ContractDetails() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Demo student - skip API call entirely
+  const fetchData = () => {
     if (isDemoMode()) {
       const demoContract = getDemoContract();
       if (demoContract) {
@@ -18,19 +17,28 @@ export default function ContractDetails() {
       return;
     }
     
-    const fetchContract = async () => {
-      try {
-        const response = await studentApi.getMyContracts();
-        const contracts: any[] = response.data.data;
+    studentApi.getMyContracts()
+      .then(res => {
+        const contracts: any[] = res.data.data;
         const contract = contracts && contracts.length > 0 ? contracts[0] : null;
         setData(contract ? { contract } : null);
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchContract();
+      })
+      .catch(() => {
+        const demoContract = getDemoContract();
+        setData(demoContract ? { contract: demoContract } : null);
+      })
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // Listen for payment updates
+  useEffect(() => {
+    const handleStorage = () => fetchData();
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
   if (loading) return <div className="p-12 text-center"><Loader2 className="animate-spin mx-auto text-blue-900" size={32} /></div>;

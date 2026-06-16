@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { AlertCircle, FileText, CheckCircle2, Loader2, AlertTriangle, FileSignature } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
 import { studentApi } from '@/lib/api';
-import { getDemoDashboard, getDemoPaymentMade, createDemoContract, isDemoMode } from '@/lib/demo-mode';
+import { getDemoDashboard, getDemoPaymentMade, createDemoContract, isDemoMode, getDemoContract } from '@/lib/demo-mode';
 
 export default function ContractPage() {
   const [data, setData] = useState<any>(null);
@@ -14,6 +14,23 @@ export default function ContractPage() {
   const [hasAccepted, setHasAccepted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const fetchData = () => {
+    if (isDemoMode()) {
+      setData(getDemoDashboard());
+      setLoading(false);
+      return;
+    }
+    
+    studentApi.getDashboard()
+      .then(res => setData(res.data?.data))
+      .catch(() => setData(getDemoDashboard()))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const termId: string = data?.financial?.activeTerm || data?.contract?.termId || '';
   const termParts = termId ? termId.split('/').map(Number) : [0, 0];
@@ -52,29 +69,6 @@ export default function ContractPage() {
     }
   }, [termYear, semester, installmentCount]);
 
-  useEffect(() => {
-    // Demo student - skip API call entirely
-    if (isDemoMode()) {
-      setData(getDemoDashboard());
-      setLoading(false);
-      return;
-    }
-    
-    const init = async () => {
-      try {
-        const response = await studentApi.getDashboard();
-        const apiData = response.data.data;
-        setData(apiData);
-      } catch (error) {
-        console.error(error);
-        setData(getDemoDashboard());
-      } finally {
-        setLoading(false);
-      }
-    };
-    init();
-  }, []);
-
   if (loading) return <div className="p-12 text-center"><Loader2 className="animate-spin mx-auto text-blue-900" size={32} /></div>;
 
   const studentName = data?.student?.studentName || getDemoDashboard().student.studentName;
@@ -83,7 +77,8 @@ export default function ContractPage() {
   const paymentMade = getDemoPaymentMade();
   const remainingBalance = totalAmount - paymentMade;
   const isEligible = paymentMade >= totalAmount * 0.5;
-  const hasContract = !!localStorage.getItem('auca_demo_contract');
+  const demoContract = getDemoContract();
+  const hasContract = !!demoContract;
 
   const sumEntered = installments.reduce((sum, inst) => sum + (Number(inst.amount) || 0), 0);
   const isAmountsValid = sumEntered > 0 && sumEntered === remainingBalance && installments.every(inst => inst.date && Number(inst.amount) > 0);

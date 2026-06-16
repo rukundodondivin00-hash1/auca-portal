@@ -3,6 +3,7 @@ import { ArrowUpRight, FileSignature, Loader2 } from "lucide-react";
 import { Link } from "react-router"; 
 import InitiatePaymentModal from "./InitiatePaymentModal";
 import { studentApi } from "@/lib/api";
+import { getDemoContract, isDemoMode } from "@/lib/demo-mode";
 
 export default function WelcomeBanner() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -13,33 +14,37 @@ export default function WelcomeBanner() {
   const [totalAmount, setTotalAmount] = useState(0);
   const [hasContract, setHasContract] = useState(false);
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        const response = await studentApi.getDashboard();
-        const data = response.data?.data;
+  const fetchData = () => {
+    if (isDemoMode()) {
+      const demoContract = getDemoContract();
+      setHasContract(!!demoContract);
+      setStudentName('Demo Student');
+      setStudentId('25307');
+      setTotalAmount(1500000);
+      setLoading(false);
+      return;
+    }
+
+    studentApi.getDashboard()
+      .then(res => {
+        const data = res.data?.data;
         const student = data?.student || data;
-        const totalAmount = data?.financial?.totalFees || 0;
-        const studentName = student?.studentName || student?.name || student?.fullName || data?.studentName || data?.fullName || localStorage.getItem('student_name') || "";
-        const studentId = student?.studentId || student?.id || student?.username || data?.studentId || data?.id || data?.username || localStorage.getItem('student_id') || "";
         const contract = data?.contract;
         
-        setStudentName(studentName);
-        setStudentId(studentId);
-        setTotalAmount(totalAmount);
+        setStudentName(student?.studentName || student?.name || student?.fullName || data?.studentName || data?.fullName || localStorage.getItem('student_name') || "");
+        setStudentId(student?.studentId || student?.id || student?.username || data?.studentId || data?.id || data?.username || localStorage.getItem('student_id') || "");
+        setTotalAmount(data?.financial?.totalFees || 0);
         setHasContract(contract && (contract.hasContract || contract.id));
-        
-      } catch (error) {
-        console.error("Failed to fetch dashboard data:", error);
-        setStudentName("");
-        setStudentId("");
-        setTotalAmount(0);
-        setHasContract(false);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchDashboardData();
+      })
+      .catch(() => {
+        const demoContract = getDemoContract();
+        setHasContract(!!demoContract);
+      })
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchData();
   }, []);
 
   if (loading) {
@@ -90,7 +95,10 @@ export default function WelcomeBanner() {
 
       <InitiatePaymentModal 
         isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
+        onClose={() => setIsModalOpen(false)}
+        onPaymentSuccess={() => {
+          setTimeout(fetchData, 100);
+        }}
       />
     </div>
   );
