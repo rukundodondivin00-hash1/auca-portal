@@ -45,6 +45,7 @@ export interface DemoContract {
   totalFees: number;
   balanceAtSigning: number;
   amountPaidAtSigning: number;
+  signaturePayment: number;
   remainingAtSigning: number;
   status: 'PENDING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED' | 'OVERDUE';
   agreed: boolean;
@@ -95,7 +96,7 @@ export function createDemoContract(installments: { amount: string; date: string 
   const now = new Date().toISOString();
   const contractId = crypto.randomUUID();
 
-  const mappedInstallments: DemoInstallment[] = installments.map((inst, i) => ({
+const mappedInstallments: DemoInstallment[] = installments.map((inst, i) => ({
     id: crypto.randomUUID(),
     contractId,
     installmentNumber: i + 1,
@@ -116,6 +117,7 @@ export function createDemoContract(installments: { amount: string; date: string 
     totalFees: financial.totalFees,
     balanceAtSigning: -financial.remainingBalance,
     amountPaidAtSigning: financial.amountPaid,
+    signaturePayment: financial.amountPaid,
     remainingAtSigning: financial.remainingBalance,
     status: 'ACTIVE',
     agreed: true,

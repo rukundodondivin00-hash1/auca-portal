@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FileText, CheckCircle2, TrendingUp, CalendarClock, Loader2, Check } from 'lucide-react';
 import { studentApi } from '@/lib/api';
-import { getDemoContract } from '@/lib/demo-mode';
+import { getDemoContract, getDemoPaymentMade } from '@/lib/demo-mode';
 
 export default function ContractDetails() {
   const [data, setData] = useState<any>(null);
@@ -46,7 +46,9 @@ export default function ContractDetails() {
   }
 
   const totalAmount = contract.totalFees || 0;
-  const paymentMade = contract.installments?.reduce((s: number, i: any) => s + (i.amountPaid || 0), 0) || 0;
+  const initialPayment = contract.signaturePayment || getDemoPaymentMade();
+  const installmentPaid = contract.installments?.reduce((s: number, i: any) => s + (i.amountPaid || 0), 0) || 0;
+  const paymentMade = initialPayment + installmentPaid;
   const progressPercentage = Math.min(Math.round((paymentMade / totalAmount) * 100), 100);
 
   return (
