@@ -1,5 +1,4 @@
 ﻿import { Routes, Route, Navigate } from "react-router";
-import { useEffect } from "react";
 import Sidebar from "./components/Sidebar";
 import AdminSidebar from "./components/admin/AdminSidebar";
 import Header from "./components/Header";
@@ -22,7 +21,6 @@ import AdminStudents from "./pages/admin/AdminStudents";
 import AdminStudentDetails from "./pages/admin/AdminStudentDetails";
 import AdminPenalties from "./pages/admin/AdminPenalties";
 import { Toaster } from "./components/ui/sonner";
-import { resetDemoMode } from "./lib/demo-mode";
 
 function AdminAuthWrapper({ children }: { children: React.ReactNode }) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
@@ -54,13 +52,6 @@ function StudentAuthWrapper({ children }: { children: React.ReactNode }) {
   }
   
   return <>{children}</>;
-}
-
-function DemoReset() {
-  useEffect(() => {
-    resetDemoMode();
-  }, []);
-  return null;
 }
 
 function DashboardHome() {
@@ -113,7 +104,6 @@ export default function App() {
       <Route path="/*" element={
         <StudentAuthWrapper>
           <div className="flex h-screen bg-gray-50 overflow-hidden">
-            <DemoReset />
             <Sidebar />
 
             <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
