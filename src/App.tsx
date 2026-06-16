@@ -58,7 +58,11 @@ function StudentAuthWrapper({ children }: { children: React.ReactNode }) {
 
 function DemoReset() {
   useEffect(() => {
-    resetDemoMode();
+    // Only reset on fresh page load, not SPA navigation
+    if (!sessionStorage.getItem('demo_nav_init')) {
+      sessionStorage.setItem('demo_nav_init', '1');
+      resetDemoMode();
+    }
   }, []);
   return null;
 }
