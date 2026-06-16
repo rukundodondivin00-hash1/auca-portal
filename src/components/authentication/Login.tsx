@@ -23,13 +23,9 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Reset demo mode on fresh login page load (after logout)
+  // Reset demo mode on login page load
   useEffect(() => {
-    const token = localStorage.getItem('jwt_token');
-    const userRole = localStorage.getItem('user_role');
-    if (!token || !(userRole === 'ROLE_STUDENT' || userRole === 'STUDENT')) {
-      resetDemoMode();
-    }
+    resetDemoMode();
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
