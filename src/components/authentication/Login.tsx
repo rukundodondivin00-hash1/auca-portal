@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 import { authApi } from '@/lib/api';
-import { setDemoPaymentMade, setDemoMode } from '@/lib/demo-mode';
+import { setDemoPaymentMade, setDemoMode, resetDemoMode } from '@/lib/demo-mode';
 
 interface LoginResponse {
   token: string;
@@ -21,14 +21,20 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  
   const navigate = useNavigate();
+
+  // Reset demo mode on fresh login page load (after logout)
+  useEffect(() => {
+    const token = localStorage.getItem('jwt_token');
+    const userRole = localStorage.getItem('user_role');
+    if (!token || !(userRole === 'ROLE_STUDENT' || userRole === 'STUDENT')) {
+      resetDemoMode();
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setErrorMessage(null);
 
     try {
       const response = await authApi.login({
@@ -42,7 +48,6 @@ export default function Login() {
 
       if (token && role) {
         localStorage.setItem('jwt_token', token);
-        // Convert STUDENT to ROLE_STUDENT for consistency
         const normalizedRole = role === 'STUDENT' ? 'ROLE_STUDENT' : role;
         const studentId = data.username || data.studentId || data.id;
         const studentName = data.fullName || data.studentName || data.name;
@@ -53,22 +58,23 @@ export default function Login() {
       } else {
         throw new Error("Invalid response from server");
       }
-
-} catch (error: any) {
+    } catch (error: any) {
       // Demo mode fallback - set demo credentials
       localStorage.setItem('jwt_token', 'demo-token');
       localStorage.setItem('user_role', 'ROLE_STUDENT');
       localStorage.setItem('student_id', '25306');
       localStorage.setItem('student_name', 'Jean Baptiste Nkurunziza');
       setDemoMode(true);
+      setDemoPaymentMade(0);
       navigate('/student-dashboard');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.16),transparent_24%),linear-gradient(135deg,#020617_0%,#0f172a_48%,#020617_100%)] px-4 py-2 sm:px-6 sm:py-4 lg:px-8 lg:py-8">
       
-      {/* Background Decorative Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div 
           className="absolute inset-0 bg-cover bg-center opacity-50 filter brightness-90 contrast-[1.05]" 
@@ -82,7 +88,6 @@ export default function Login() {
           <div className="w-full">
             <div className="relative mx-auto flex max-w-4xl flex-col items-stretch overflow-hidden rounded-3xl bg-transparent lg:flex-row lg:min-h-[420px]">
               
-              {/* Left Side - Branding (Hidden on Mobile) */}
               <div className="relative hidden min-h-[420px] flex-1 items-center justify-center overflow-hidden border-r border-white/20 bg-slate-900/40 lg:flex lg:rounded-l-3xl backdrop-blur-sm">
                 <div className="relative z-10 flex h-full w-full flex-col items-center justify-center px-8 py-8 text-center">
                   <div className="relative h-28 w-28 shrink-0 md:h-32 md:w-32 bg-white rounded-full p-2 flex items-center justify-center shadow-2xl">
@@ -99,7 +104,6 @@ export default function Login() {
                 </div>
               </div>
 
-              {/* Right Side - Login Form */}
               <div className="flex-1 flex items-stretch">
                 <div className="w-full h-full flex">
                   <div className="relative flex h-full w-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 text-slate-900 shadow-xl sm:p-8 lg:rounded-l-none lg:rounded-r-3xl dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50">
@@ -108,7 +112,6 @@ export default function Login() {
                     
                     <div className="relative z-10 w-full flex-1 flex flex-col justify-center">
                       
-                      {/* Mobile Logo */}
                       <div className="mb-6 flex items-center justify-center lg:hidden">
                         <div className="relative h-16 w-16 bg-blue-50 rounded-full p-2">
                           <img 
@@ -127,16 +130,7 @@ export default function Login() {
                         
                         <div className="mb-6 h-px bg-slate-200/80 dark:bg-slate-800/80"></div>
                         
-                        {/* Error Message Alert */}
-                        {errorMessage && (
-                          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg flex items-start gap-2 text-sm">
-                            <AlertCircle className="shrink-0 mt-0.5" size={16} />
-                            <p>{errorMessage}</p>
-                          </div>
-                        )}
-                        
                         <form onSubmit={handleLogin} className="space-y-5">
-                          {/* Email Input */}
                           <div>
                             <label htmlFor="email" className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-800 dark:text-slate-300">
                               ID or Email
@@ -156,7 +150,6 @@ export default function Login() {
                             </div>
                           </div>
 
-                          {/* Password Input */}
                           <div>
                             <label htmlFor="password" className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-800 dark:text-slate-300">
                               Password

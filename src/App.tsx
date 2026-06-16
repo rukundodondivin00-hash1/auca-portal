@@ -22,7 +22,7 @@ import AdminStudents from "./pages/admin/AdminStudents";
 import AdminStudentDetails from "./pages/admin/AdminStudentDetails";
 import AdminPenalties from "./pages/admin/AdminPenalties";
 import { Toaster } from "./components/ui/sonner";
-import { resetDemoPayment } from "./lib/demo-mode";
+import { resetDemoMode } from "./lib/demo-mode";
 
 function AdminAuthWrapper({ children }: { children: React.ReactNode }) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
@@ -58,12 +58,7 @@ function StudentAuthWrapper({ children }: { children: React.ReactNode }) {
 
 function DemoReset() {
   useEffect(() => {
-    const lastReset = sessionStorage.getItem('demo_reset_time');
-    const now = Date.now();
-    if (!lastReset || now - Number(lastReset) > 1000) {
-      resetDemoPayment();
-      sessionStorage.setItem('demo_reset_time', String(now));
-    }
+    resetDemoMode();
   }, []);
   return null;
 }
