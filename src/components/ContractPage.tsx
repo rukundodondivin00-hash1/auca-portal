@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { AlertCircle, FileText, CheckCircle2, Loader2, AlertTriangle, FileSignature } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
 import { studentApi } from '@/lib/api';
-import { isDemoMode, getDemoDashboard, getDemoPaymentMade, createDemoContract } from '@/lib/demo-mode';
+import { getDemoDashboard, getDemoPaymentMade, createDemoContract } from '@/lib/demo-mode';
 
 export default function ContractPage() {
   const [data, setData] = useState<any>(null);
@@ -73,7 +73,7 @@ export default function ContractPage() {
   const studentName = data?.student?.studentName || getDemoDashboard().student.studentName;
   const studentId = data?.student?.studentId || getDemoDashboard().student.studentId;
   const totalAmount = data?.financial?.totalFees || getDemoDashboard().financial.totalFees;
-  const paymentMade = isDemoMode() ? getDemoPaymentMade() : (data?.financial?.amountPaid || getDemoPaymentMade());
+  const paymentMade = data?.financial?.amountPaid || getDemoPaymentMade();
   const remainingBalance = totalAmount - paymentMade;
   const isEligible = paymentMade >= totalAmount * 0.5;
   const contract = data?.contract || { hasContract: false };
@@ -113,28 +113,19 @@ export default function ContractPage() {
           })),
       };
 
-      if (isDemoMode()) {
+      try {
+        const response = await studentApi.createContract(contractData);
+        if (response.data?.data?.id) {
+          navigate(`/contract-details?id=${response.data.data.id}`);
+        } else {
+          alert('Contract submitted successfully!');
+          navigate('/contract-details');
+        }
+      } catch (apiError) {
+        console.error('API failed, falling back to demo mode:', apiError);
         createDemoContract(installments);
-        alert('Contract submitted successfully! Check /contract-details for details.');
+        alert('API unavailable. Contract saved in demo mode. Check /contract-details for details.');
         navigate('/contract-details');
-        return;
-      }
-
-      const response = await studentApi.createContract(contractData);
-      if (response.data?.data?.id) {
-        navigate(`/contract-details?id=${response.data.data.id}`);
-      } else {
-        alert('Contract submitted successfully!');
-        navigate('/contract-details');
-      }
-    } catch (error) {
-      console.error(error);
-      if (isDemoMode()) {
-        createDemoContract(installments);
-        alert('Contract submitted successfully! Check /contract-details for details.');
-        navigate('/contract-details');
-      } else {
-        setSubmitError('Failed to submit contract. Please try again.');
       }
     } finally {
       setIsSubmitting(false);
@@ -148,6 +139,20 @@ export default function ContractPage() {
           <AlertTriangle size={40} className="text-yellow-600 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-yellow-700">No Registration Found</h2>
           <p className="mt-2 text-yellow-600">You have not registered for courses yet. Please apply for registration first.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (paymentMade >= totalAmount) {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center p-6">
+        <div className="bg-green-50 border border-green-200 p-8 rounded-xl shadow-sm text-center">
+          <CheckCircle2 size={40} className="text-green-600 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-green-700">Congratulations! You're Paid in Full</h2>
+          <p className="mt-2 text-green-600">You have already paid your full tuition of {totalAmount.toLocaleString()} RWF.</p>
+          <p className="mt-2 text-sm text-gray-600">No payment contract is needed.</p>
+          <Link to="/dashboard" className="mt-4 inline-block bg-[#00447b] text-white px-6 py-2 rounded-lg font-bold">Back to Dashboard</Link>
         </div>
       </div>
     );
