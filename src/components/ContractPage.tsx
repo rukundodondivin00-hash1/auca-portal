@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { AlertCircle, FileText, CheckCircle2, Loader2, AlertTriangle, FileSignature } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
 import { studentApi } from '@/lib/api';
-import { getDemoDashboard, getDemoPaymentMade, createDemoContract } from '@/lib/demo-mode';
+import { getDemoDashboard, getDemoPaymentMade, createDemoContract, isDemoMode } from '@/lib/demo-mode';
 
 export default function ContractPage() {
   const [data, setData] = useState<any>(null);
@@ -53,6 +53,13 @@ export default function ContractPage() {
   }, [termYear, semester, installmentCount]);
 
   useEffect(() => {
+    // Demo student - skip API call entirely
+    if (isDemoMode()) {
+      setData(getDemoDashboard());
+      setLoading(false);
+      return;
+    }
+    
     const init = async () => {
       try {
         const response = await studentApi.getDashboard();
@@ -112,6 +119,13 @@ export default function ContractPage() {
           })),
       };
 
+      // Demo student - save to localStorage without API call
+      if (isDemoMode()) {
+        createDemoContract(installments);
+        navigate('/contract-details');
+        return;
+      }
+
       try {
         const response = await studentApi.createContract(contractData);
         if (response.data?.data?.id) {
@@ -121,10 +135,8 @@ export default function ContractPage() {
           navigate('/contract-details');
         }
       } catch (apiError) {
-        console.error('API failed, falling back to demo mode:', apiError);
-        createDemoContract(installments);
-        alert('API unavailable. Contract saved in demo mode. Check /contract-details for details.');
-        navigate('/contract-details');
+        console.error('API failed:', apiError);
+        setSubmitError('Failed to submit contract. Please try again.');
       }
     } finally {
       setIsSubmitting(false);
@@ -198,17 +210,17 @@ export default function ContractPage() {
           </div>
           <div className="flex flex-wrap gap-3">
              <div className="bg-gray-50 px-4 py-3 rounded-lg border">
-               <p className="text-xs text-gray-500 mb-1">Remaining Balance</p>
-               <p className="font-bold">{remainingBalance.toLocaleString()} RWF</p>
-             </div>
-             <div className="bg-gray-50 px-4 py-3 rounded-lg border">
-               <p className="text-xs text-gray-500 mb-1">Paid Percentage</p>
-               <p className="font-bold text-green-600">{((paymentMade / totalAmount) * 100).toFixed(1)}%</p>
-             </div>
-             <div className="bg-gray-50 px-4 py-3 rounded-lg border">
-               <p className="text-xs text-gray-500 mb-1">Semester</p>
-               <p className="font-bold">{semester === 1 ? 'Semester 1 (Oct-Nov)' : 'Semester 2 (Feb-Mar-Apr)'}</p>
-             </div>
+              <p className="text-xs text-gray-500 mb-1">Remaining Balance</p>
+              <p className="font-bold">{remainingBalance.toLocaleString()} RWF</p>
+            </div>
+            <div className="bg-gray-50 px-4 py-3 rounded-lg border">
+              <p className="text-xs text-gray-500 mb-1">Paid Percentage</p>
+              <p className="font-bold text-green-600">{((paymentMade / totalAmount) * 100).toFixed(1)}%</p>
+            </div>
+            <div className="bg-gray-50 px-4 py-3 rounded-lg border">
+              <p className="text-xs text-gray-500 mb-1">Semester</p>
+              <p className="font-bold">{semester === 1 ? 'Semester 1 (Oct-Nov)' : 'Semester 2 (Feb-Mar-Apr)'}</p>
+            </div>
           </div>
       </div>
 

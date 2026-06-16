@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Check } from 'lucide-react';
 import { studentApi } from '@/lib/api';
-import { getDemoPaymentMade, setDemoPaymentMade, getDemoDashboard, getDemoContract, simulateDemoPayment } from '@/lib/demo-mode';
+import { getDemoPaymentMade, setDemoPaymentMade, getDemoDashboard, getDemoContract, simulateDemoPayment, isDemoMode } from '@/lib/demo-mode';
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -19,6 +19,11 @@ export default function InitiatePaymentModal({ isOpen, onClose }: PaymentModalPr
 
   useEffect(() => {
     if (isOpen) {
+      // Demo student - skip API call
+      if (isDemoMode()) {
+        setDashboardData(getDemoDashboard());
+        return;
+      }
       studentApi.getDashboard()
         .then(res => setDashboardData(res.data.data))
         .catch(() => setDashboardData(getDemoDashboard()));
@@ -110,8 +115,8 @@ export default function InitiatePaymentModal({ isOpen, onClose }: PaymentModalPr
           </div>
 
           <div className="bg-gray-50 p-3 rounded-md text-sm text-gray-600">
-            <p>Payer code: {dashboardData?.student?.studentId || '25306'}</p>
-            <p>Payer name: {dashboardData?.student?.studentName || 'Jean Baptiste Nkurunziza'}</p>
+            <p>Payer code: {dashboardData?.student?.studentId || '25307'}</p>
+            <p>Payer name: {dashboardData?.student?.studentName || 'Demo Student'}</p>
           </div>
         </div>
 

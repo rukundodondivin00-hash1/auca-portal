@@ -1,13 +1,23 @@
 import { useState, useEffect } from 'react';
 import { FileText, CheckCircle2, TrendingUp, CalendarClock, Loader2, Check } from 'lucide-react';
 import { studentApi } from '@/lib/api';
-import { getDemoContract, getDemoPaymentMade } from '@/lib/demo-mode';
+import { getDemoContract, getDemoPaymentMade, isDemoMode } from '@/lib/demo-mode';
 
 export default function ContractDetails() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Demo student - skip API call entirely
+    if (isDemoMode()) {
+      const demoContract = getDemoContract();
+      if (demoContract) {
+        setData({ contract: demoContract });
+      }
+      setLoading(false);
+      return;
+    }
+    
     const fetchContract = async () => {
       try {
         const response = await studentApi.getMyContracts();
@@ -15,12 +25,7 @@ export default function ContractDetails() {
         const contract = contracts && contracts.length > 0 ? contracts[0] : null;
         setData(contract ? { contract } : null);
       } catch (error) {
-        const demoContract = getDemoContract();
-        if (demoContract) {
-          setData({ contract: demoContract });
-        } else {
-          console.error(error);
-        }
+        console.error(error);
       } finally {
         setLoading(false);
       }

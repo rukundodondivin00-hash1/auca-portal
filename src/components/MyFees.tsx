@@ -2,13 +2,20 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Wallet, FileText, DollarSign, Loader2, AlertTriangle } from 'lucide-react';
 import { studentApi } from '@/lib/api';
-import { getDemoDashboard, getDemoPaymentMade } from '@/lib/demo-mode';
+import { getDemoDashboard, getDemoPaymentMade, isDemoMode } from '@/lib/demo-mode';
 
 export default function MyFees() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Demo student - skip API call entirely
+    if (isDemoMode()) {
+      setData(getDemoDashboard());
+      setLoading(false);
+      return;
+    }
+    
     const fetchFinances = async () => {
       try {
         const response = await studentApi.getDashboard();
