@@ -142,12 +142,9 @@ export function simulateDemoPayment(installmentId: string): DemoContract | null 
   const installment = contract.installments.find(i => i.id === installmentId);
   if (!installment || installment.status === 'PAID') return contract;
 
-  installment.status = 'PAID';
+installment.status = 'PAID';
   installment.amountPaid = installment.amountDue;
   installment.paidDate = new Date().toISOString();
-
-  const totalPaid = contract.installments.reduce((s, i) => s + i.amountPaid, 0);
-  contract.amountPaidAtSigning = totalPaid;
 
   const allPaid = contract.installments.every(i => i.status === 'PAID');
   if (allPaid) {
