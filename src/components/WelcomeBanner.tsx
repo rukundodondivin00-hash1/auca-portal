@@ -3,42 +3,32 @@ import { ArrowUpRight, FileSignature, Loader2 } from "lucide-react";
 import { Link } from "react-router"; 
 import InitiatePaymentModal from "./InitiatePaymentModal";
 import { studentApi } from "@/lib/api";
-import { getDemoContract, isDemoMode } from "@/lib/demo-mode";
 
 export default function WelcomeBanner() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  
   const [studentName, setStudentName] = useState("");
   const [studentId, setStudentId] = useState("");
   const [totalAmount, setTotalAmount] = useState(0);
   const [hasContract, setHasContract] = useState(false);
+  const [isEligibleForContract, setIsEligibleForContract] = useState(false);
 
   const fetchData = () => {
-    if (isDemoMode()) {
-      const demoContract = getDemoContract();
-      setHasContract(!!demoContract);
-      setStudentName('Demo Student');
-      setStudentId('25307');
-      setTotalAmount(1500000);
-      setLoading(false);
-      return;
-    }
-
     studentApi.getDashboard()
       .then(res => {
         const data = res.data?.data;
         const student = data?.student || data;
         const contract = data?.contract;
-        
+        const financial = data?.financial;
         setStudentName(student?.studentName || student?.name || student?.fullName || data?.studentName || data?.fullName || localStorage.getItem('student_name') || "");
         setStudentId(student?.studentId || student?.id || student?.username || data?.studentId || data?.id || data?.username || localStorage.getItem('student_id') || "");
-        setTotalAmount(data?.financial?.totalFees || 0);
-        setHasContract(contract && (contract.hasContract || contract.id));
+        setTotalAmount(financial?.totalFees || 0);
+        const hasContractFlag = financial?.hasContract ?? contract?.hasContract ?? false;
+        setHasContract(hasContractFlag);
+        setIsEligibleForContract(!!financial?.isEligibleForContract);
       })
       .catch(() => {
-        const demoContract = getDemoContract();
-        setHasContract(!!demoContract);
+        setHasContract(false);
       })
       .finally(() => setLoading(false));
   };
@@ -70,10 +60,10 @@ export default function WelcomeBanner() {
             </p>
           </div>
           
-          <div className="ml-auto flex items-center gap-3 shrink-0">
-            {!hasContract && (
-              <Link
-                to="/contract"
+           <div className="ml-auto flex items-center gap-3 shrink-0">
+             {!hasContract && isEligibleForContract && (
+               <Link
+                 to="/contract"
                 className="inline-flex items-center gap-2 rounded-md border border-blue-300/30 bg-blue-800/50 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700/50 cursor-pointer"
               >
                 <FileSignature size={16} />

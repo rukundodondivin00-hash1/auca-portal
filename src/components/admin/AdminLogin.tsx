@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
-import { authApi } from '@/lib/api';
+import { adminAuthApi } from '@/lib/api';
 
 interface LoginResponse {
   token: string;
@@ -10,11 +10,6 @@ interface LoginResponse {
   fullName?: string;
   adminName?: string;
 }
-
-const mockAdmins: Record<string, {password: string; adminName: string; role: string}> = {
-  "admin001": { password: "admin123", adminName: "Admin User", role: "ROLE_ADMIN" },
-  "admin002": { password: "admin123", adminName: "Finance Officer", role: "ROLE_ADMIN" },
-};
 
 export default function AdminLogin() {
   const [showPassword, setShowPassword] = useState(false);
@@ -31,7 +26,7 @@ export default function AdminLogin() {
     setErrorMessage(null);
 
     try {
-      const response = await authApi.login({
+      const response = await adminAuthApi.login({
         username: email, 
         password: password
       });
@@ -52,15 +47,7 @@ export default function AdminLogin() {
       }
 
     } catch (error: any) {
-      const admin = mockAdmins[email];
-      if (admin && admin.password === password) {
-        localStorage.setItem('jwt_token', `demo_token_${email}`);
-        localStorage.setItem('user_role', admin.role);
-        localStorage.setItem('admin_name', admin.adminName);
-        navigate('/admin/dashboard');
-      } else {
-        setErrorMessage("Invalid admin credentials. Demo IDs: admin001-002 with password 'admin123'");
-      }
+      setErrorMessage("Invalid admin credentials. Please try again.");
     } finally {
       setIsLoading(false);
     }

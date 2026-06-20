@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
 import { authApi } from '@/lib/api';
-import { setDemoPaymentMade, setDemoMode } from '@/lib/demo-mode';
 
 interface LoginResponse {
   token: string;
@@ -27,19 +26,6 @@ export default function Login() {
     e.preventDefault();
     setIsLoading(true);
 
-    // Check demo student FIRST - no API call needed
-    if (email === '25307' && password === 'demo123') {
-      localStorage.setItem('jwt_token', 'demo-token-student');
-      localStorage.setItem('user_role', 'ROLE_STUDENT');
-      localStorage.setItem('student_id', '25307');
-      localStorage.setItem('student_name', 'Demo Student');
-      setDemoMode(true);
-      setDemoPaymentMade(0);
-      navigate('/student-dashboard');
-      setIsLoading(false);
-      return;
-    }
-
     try {
       const response = await authApi.login({
         username: email, 
@@ -63,7 +49,7 @@ export default function Login() {
         throw new Error("Invalid response from server");
       }
     } catch (error: any) {
-      alert('Invalid credentials. Demo: Use student ID 25307 with password demo123.');
+      alert('Invalid credentials. Please check your ID and password.');
     } finally {
       setIsLoading(false);
     }

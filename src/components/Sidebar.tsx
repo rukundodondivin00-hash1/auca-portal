@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router'; 
 import { Pin, TrendingUp, Award, BookOpen, DollarSign, Bell, MessageSquare, Settings, LogOut, GraduationCap, FileSignature, FileText, Calendar } from 'lucide-react';
 import { studentApi } from '@/lib/api';
-import { resetDemoMode, getDemoContract } from '@/lib/demo-mode';
 
 export default function Sidebar() {
   const [isPinned, setIsPinned] = useState(false);
@@ -20,9 +19,7 @@ export default function Sidebar() {
         const contract = data?.contract;
         setHasContract(contract && (contract.hasContract || contract.id));
       } catch (error) {
-        // Fallback to demo contract check
-        const demoContract = getDemoContract();
-        setHasContract(!!demoContract);
+        setHasContract(false);
       } finally {
         setLoadingContract(false);
       }
@@ -36,7 +33,6 @@ export default function Sidebar() {
     localStorage.removeItem('student_id');
     localStorage.removeItem('student_name');
     sessionStorage.clear();
-    resetDemoMode();
     navigate('/login');
   };
 

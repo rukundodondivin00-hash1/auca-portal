@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Check } from 'lucide-react';
 import { studentApi } from '@/lib/api';
-import { getDemoPaymentMade, setDemoPaymentMade, getDemoDashboard, getDemoContract, simulateDemoPayment, isDemoMode } from '@/lib/demo-mode';
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -20,59 +19,31 @@ export default function InitiatePaymentModal({ isOpen, onClose, onPaymentSuccess
 
   useEffect(() => {
     if (isOpen) {
-      // Demo student - skip API call
-      if (isDemoMode()) {
-        setDashboardData(getDemoDashboard());
-        return;
-      }
       studentApi.getDashboard()
         .then(res => setDashboardData(res.data.data))
-        .catch(() => setDashboardData(getDemoDashboard()));
+        .catch(() => {
+          setDashboardData(null);
+        });
     }
   }, [isOpen]);
 
-  const totalAmount = dashboardData?.financial?.totalFees || dashboardData?.financial?.totalFees || 1500000;
-  // Use getDemoPaymentMade() for demo mode to get actual current payment amount
-  const storedPaymentMade = getDemoPaymentMade();
-  const apiPaymentMade = dashboardData?.financial?.amountPaid || 0;
-  const paymentMade = isDemoMode() ? storedPaymentMade : apiPaymentMade;
-  const remainingBalance = totalAmount - paymentMade;
-  const requiredAmount = totalAmount * 0.5;
-  const isEligible = paymentMade >= requiredAmount;
-  const shortfall = Math.ceil(requiredAmount - paymentMade);
+  const totalAmount = dashboardData?.financial?.totalFees || 0;
+  const paymentMade = dashboardData?.financial?.paidAmount || 0;
+  const remainingBalance = dashboardData?.financial?.remainingBalance ?? (totalAmount - paymentMade);
+  const isEligible = dashboardData?.financial?.isEligibleForContract ?? false;
+  const shortfall = Math.ceil((totalAmount * 0.5) - paymentMade);
 
   const handleInitiatePayment = () => {
     if (!paymentAmount) return;
     setIsProcessing(true);
-    
-    // Simulate payment - update demo payment
     setTimeout(() => {
-      const demoContract = getDemoContract();
-      const paymentAmt = Number(paymentAmount);
-      const currentPaid = getDemoPaymentMade();
-      
-      // If contract exists, update first unpaid installment
-      if (demoContract) {
-        const unpaidInst = demoContract.installments.find(i => i.status === 'PENDING');
-        if (unpaidInst && paymentAmt >= unpaidInst.amountDue) {
-          simulateDemoPayment(unpaidInst.id);
-        } else if (unpaidInst) {
-          // Partial payment - mark installment as partially paid
-          unpaidInst.amountPaid = paymentAmt;
-          unpaidInst.status = 'PARTIAL';
-          unpaidInst.paidDate = new Date().toISOString();
-          localStorage.setItem('auca_demo_contract', JSON.stringify(demoContract));
-        }
-      } else {
-        setDemoPaymentMade(currentPaid + paymentAmt);
-      }
-      
       setPaymentAmount('');
       setIsProcessing(false);
       onClose();
       onPaymentSuccess?.();
     }, 1500);
   };
+
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

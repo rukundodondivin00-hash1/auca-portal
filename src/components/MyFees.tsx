@@ -2,7 +2,6 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Wallet, FileText, DollarSign, Loader2, AlertTriangle } from 'lucide-react';
 import { studentApi } from '@/lib/api';
-import { getDemoDashboard, getDemoPaymentMade, isDemoMode } from '@/lib/demo-mode';
 import InitiatePaymentModal from './InitiatePaymentModal';
 
 export default function MyFees() {
@@ -11,15 +10,11 @@ export default function MyFees() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const fetchData = () => {
-    if (isDemoMode()) {
-      setData(getDemoDashboard());
-      setLoading(false);
-      return;
-    }
-    
     studentApi.getDashboard()
       .then(res => setData(res.data?.data))
-      .catch(() => setData(getDemoDashboard()))
+      .catch(() => {
+        setData(null);
+      })
       .finally(() => setLoading(false));
   };
 
@@ -32,10 +27,10 @@ export default function MyFees() {
   }
 
   const totalAmount = data?.financial?.totalFees || 0;
-  const paymentMade = getDemoPaymentMade();
-  const remainingBalance = totalAmount - paymentMade;
+  const paymentMade = data?.financial?.paidAmount || 0;
+  const remainingBalance = data?.financial?.remainingBalance || (totalAmount - paymentMade);
   const paymentPercentage = totalAmount > 0 ? Math.round((paymentMade / totalAmount) * 100) : 0;
-  const isEligible = paymentPercentage >= 50;
+  const isEligible = data?.financial?.isEligibleForContract ?? false;
 
   if (totalAmount === 0) {
     return (

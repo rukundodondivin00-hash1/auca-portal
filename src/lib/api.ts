@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'https://auca-contract.onrender.com',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8083',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -86,6 +86,10 @@ export const authApi = {
   login: (credentials: any) => api.post('/api/auth/login', credentials),
 };
 
+export const adminAuthApi = {
+  login: (credentials: any) => api.post('/api/admin/login', credentials),
+};
+
 export const studentApi = {
   getDashboard: () => api.get('/api/dashboard'),
   createContract: (payload: any) => api.post('/api/contracts', payload),
@@ -100,10 +104,10 @@ export const adminApi = {
     api.get<Contract>(`/api/admin/contracts/${id}`),
 
   getContractsByStudent: (studentId: string) =>
-    api.get<Contract[]>(`/api/admin/contracts/student/${studentId}`),
+    api.get<PaginatedResponse<Contract>>(`/api/admin/contracts/student/${studentId}`),
 
   getContractsByStatus: (status: string) =>
-    api.get<Contract[]>(`/api/admin/contracts/status/${status}`),
+    api.get<PaginatedResponse<Contract>>(`/api/admin/contracts/status/${status}`),
 
   getInstallments: (page = 0, size = 20, sortBy = 'createdAt', direction = 'desc') =>
     api.get<PaginatedResponse<Installment>>('/api/admin/installments', { params: { page, size, sortBy, direction } }),
@@ -143,3 +147,4 @@ export const adminApi = {
 };
 
 export default api;
+

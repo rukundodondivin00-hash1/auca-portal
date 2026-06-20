@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
-import { AlertCircle, FileText, CheckCircle2, Loader2, AlertTriangle, FileSignature } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Loader2, AlertTriangle, FileSignature } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
 import { studentApi } from '@/lib/api';
-import { getDemoDashboard, getDemoPaymentMade, createDemoContract, isDemoMode, getDemoContract } from '@/lib/demo-mode';
 
 export default function ContractPage() {
   const [data, setData] = useState<any>(null);
@@ -15,24 +14,14 @@ export default function ContractPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const fetchData = () => {
-    if (isDemoMode()) {
-      setData(getDemoDashboard());
-      setLoading(false);
-      return;
-    }
-    
+  useEffect(() => {
     studentApi.getDashboard()
       .then(res => setData(res.data?.data))
-      .catch(() => setData(getDemoDashboard()))
+      .catch(() => {})
       .finally(() => setLoading(false));
-  };
-
-  useEffect(() => {
-    fetchData();
   }, []);
 
-  const termId: string = data?.financial?.activeTerm || data?.contract?.termId || '';
+  const termId: string = data?.academic?.activeTerm || data?.financial?.activeTerm || data?.contract?.termId || '';
   const termParts = termId ? termId.split('/').map(Number) : [0, 0];
   const termYear: number = termParts[0] || 0;
   const semester: number = termParts[1] || 0;
@@ -71,14 +60,13 @@ export default function ContractPage() {
 
   if (loading) return <div className="p-12 text-center"><Loader2 className="animate-spin mx-auto text-blue-900" size={32} /></div>;
 
-  const studentName = data?.student?.studentName || getDemoDashboard().student.studentName;
-  const studentId = data?.student?.studentId || getDemoDashboard().student.studentId;
-  const totalAmount = data?.financial?.totalFees || getDemoDashboard().financial.totalFees;
-  const paymentMade = getDemoPaymentMade();
-  const remainingBalance = totalAmount - paymentMade;
-  const isEligible = paymentMade >= totalAmount * 0.5;
-  const demoContract = getDemoContract();
-  const hasContract = !!demoContract;
+  const studentName = data?.student?.studentName || data?.student?.name || data?.student?.fullName || data?.studentName || data?.fullName || '';
+  const studentId = data?.student?.studentId || data?.student?.id || data?.student?.username || data?.studentId || data?.id || data?.username || '';
+  const totalAmount = data?.financial?.totalFees || 0;
+  const paymentMade = data?.financial?.paidAmount || 0;
+  const remainingBalance = data?.financial?.remainingBalance || (totalAmount - paymentMade);
+  const isEligible = data?.financial?.isEligibleForContract ?? false;
+  const hasContract = data?.contract?.hasContract === true;
 
   const sumEntered = installments.reduce((sum, inst) => sum + (Number(inst.amount) || 0), 0);
   const isAmountsValid = sumEntered > 0 && sumEntered === remainingBalance && installments.every(inst => inst.date && Number(inst.amount) > 0);
@@ -90,48 +78,33 @@ export default function ContractPage() {
     setIsSubmitting(true);
     setSubmitError(null);
     try {
-      const contractData = {
-        studentId,
-        termId,
-        academicYear: String(termYear),
-        semester: semester === 1 ? '1' : '2',
-        totalFees: totalAmount,
-        balanceAtSigning: remainingBalance,
-        amountPaidAtSigning: paymentMade,
-        remainingAtSigning: remainingBalance,
-        status: 'ACTIVE',
-        agreed: true,
-        agreedDate: new Date().toISOString().split('T')[0],
+      const payload = {
         installments: installments
           .filter(inst => Number(inst.amount) > 0)
           .map((inst, i) => ({
             installmentNumber: i + 1,
             deadlineDate: inst.date,
-            amountDue: Number(inst.amount),
-            amountPaid: 0,
-            status: 'PENDING',
-            penaltyAmount: 0,
+            amount: Number(inst.amount),
           })),
       };
 
-      // Demo student - save to localStorage without API call
-      if (isDemoMode()) {
-        createDemoContract(installments);
+      const response = await studentApi.createContract(payload);
+      if (response.data?.data?.id) {
+        navigate(`/contract-details?id=${response.data.data.id}`);
+      } else {
+        alert(response.data?.message || 'Contract submitted successfully!');
         navigate('/contract-details');
-        return;
       }
-
-      try {
-        const response = await studentApi.createContract(contractData);
-        if (response.data?.data?.id) {
-          navigate(`/contract-details?id=${response.data.data.id}`);
-        } else {
-          alert('Contract submitted successfully!');
-          navigate('/contract-details');
-        }
-      } catch (apiError) {
-        console.error('API failed:', apiError);
-        setSubmitError('Failed to submit contract. Please try again.');
+    } catch (error: any) {
+      console.error('Contract submission error:', error);
+      if (error?.response) {
+        const data = error.response.data;
+        const backendMessage = data?.message || data?.error || data?.details || JSON.stringify(data) || 'Failed to submit contract. Please try again.';
+        setSubmitError(`Backend error (${error.response.status}): ${backendMessage}`);
+      } else if (error?.request) {
+        setSubmitError('Network error: Cannot reach the server. Please check if the backend is running.');
+      } else {
+        setSubmitError(error?.message || 'Failed to submit contract. Please try again.');
       }
     } finally {
       setIsSubmitting(false);
@@ -189,6 +162,18 @@ export default function ContractPage() {
     );
   }
 
+  if (semester === 3) {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center p-6">
+        <div className="bg-gray-50 border border-gray-200 p-8 rounded-xl shadow-sm text-center">
+          <AlertTriangle size={40} className="text-gray-600 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-700">Summer Semester</h2>
+          <p className="mt-2 text-gray-600">There is no contract available for the summer semester.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto space-y-6 pt-6 animate-fade-in-slow">
       {submitError && (
@@ -208,11 +193,11 @@ export default function ContractPage() {
               <p className="text-xs text-gray-500 mb-1">Remaining Balance</p>
               <p className="font-bold">{remainingBalance.toLocaleString()} RWF</p>
             </div>
-            <div className="bg-gray-50 px-4 py-3 rounded-lg border">
+             <div className="bg-gray-50 px-4 py-3 rounded-lg border">
               <p className="text-xs text-gray-500 mb-1">Paid Percentage</p>
               <p className="font-bold text-green-600">{((paymentMade / totalAmount) * 100).toFixed(1)}%</p>
             </div>
-            <div className="bg-gray-50 px-4 py-3 rounded-lg border">
+             <div className="bg-gray-50 px-4 py-3 rounded-lg border">
               <p className="text-xs text-gray-500 mb-1">Semester</p>
               <p className="font-bold">{semester === 1 ? 'Semester 1 (Oct-Nov)' : 'Semester 2 (Feb-Mar-Apr)'}</p>
             </div>

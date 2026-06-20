@@ -1,22 +1,12 @@
 import { useState, useEffect } from 'react';
 import { FileText, CheckCircle2, TrendingUp, CalendarClock, Loader2, Check } from 'lucide-react';
 import { studentApi } from '@/lib/api';
-import { getDemoContract, getDemoPaymentMade, isDemoMode } from '@/lib/demo-mode';
 
 export default function ContractDetails() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchData = () => {
-    if (isDemoMode()) {
-      const demoContract = getDemoContract();
-      if (demoContract) {
-        setData({ contract: demoContract });
-      }
-      setLoading(false);
-      return;
-    }
-    
     studentApi.getMyContracts()
       .then(res => {
         const contracts: any[] = res.data.data;
@@ -24,21 +14,13 @@ export default function ContractDetails() {
         setData(contract ? { contract } : null);
       })
       .catch(() => {
-        const demoContract = getDemoContract();
-        setData(demoContract ? { contract: demoContract } : null);
+        setData(null);
       })
       .finally(() => setLoading(false));
   };
 
   useEffect(() => {
     fetchData();
-  }, []);
-
-  // Listen for payment updates
-  useEffect(() => {
-    const handleStorage = () => fetchData();
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
   if (loading) return <div className="p-12 text-center"><Loader2 className="animate-spin mx-auto text-blue-900" size={32} /></div>;
@@ -59,7 +41,7 @@ export default function ContractDetails() {
   }
 
   const totalAmount = contract.totalFees || 0;
-  const initialPayment = contract.signaturePayment ?? contract.amountPaidAtSigning ?? getDemoPaymentMade();
+  const initialPayment = contract.amountPaidAtSigning || 0;
   const installmentPaid = contract.installments?.reduce((s: number, i: any) => s + (i.amountPaid || 0), 0) || 0;
   const paymentMade = initialPayment + installmentPaid;
   const progressPercentage = Math.min(Math.round((paymentMade / totalAmount) * 100), 100);
