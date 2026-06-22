@@ -10,8 +10,12 @@ export default function MyFees() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const fetchData = () => {
-    studentApi.getDashboard()
-      .then(res => setData(res.data?.data))
+    studentApi.getMyContracts()
+      .then(res => {
+        const contracts: any[] = res.data.data;
+        const contract = contracts && contracts.length > 0 ? contracts[0] : null;
+        setData(contract ? { contract } : null);
+      })
       .catch(() => {
         setData(null);
       })
@@ -26,13 +30,10 @@ export default function MyFees() {
     return <div className="p-12 flex justify-center items-center text-blue-900"><Loader2 className="animate-spin" size={32} /></div>;
   }
 
-  const totalAmount = data?.financial?.totalFees || 0;
-  const paymentMade = data?.financial?.paidAmount || 0;
-  const remainingBalance = data?.financial?.remainingBalance || (totalAmount - paymentMade);
-  const paymentPercentage = totalAmount > 0 ? Math.round((paymentMade / totalAmount) * 100) : 0;
-  const isEligible = data?.financial?.isEligibleForContract ?? false;
+  const contract: any = data?.contract || data;
+  const installments = contract?.installments || [];
 
-  if (totalAmount === 0) {
+  if (!contract || !contract.id) {
     return (
       <div className="p-6 space-y-6 animate-fade-in-slow">
         <div className="bg-blue-900 text-white p-6 rounded-lg shadow-sm">
@@ -42,13 +43,20 @@ export default function MyFees() {
 
         <div className="flex items-center justify-center min-h-[200px]">
           <div className="bg-yellow-50 border border-yellow-200 p-8 rounded-xl shadow-sm text-center">
-            <h2 className="text-xl font-bold text-yellow-700">No Registration Found</h2>
-            <p className="mt-2 text-yellow-600">You have not registered for courses. Please apply for registration first.</p>
+            <h2 className="text-xl font-bold text-yellow-700">No Active Contract</h2>
+            <p className="mt-2 text-yellow-600">You have not signed a contract yet.</p>
           </div>
         </div>
       </div>
     );
   }
+
+  const totalAmount = contract.totalFees || 0;
+  const initialPayment = contract.amountPaidAtSigning || 0;
+  const installmentPaid = contract.installments?.reduce((s: number, i: any) => s + (i.amountPaid || 0), 0) || 0;
+  const paymentMade = initialPayment + installmentPaid;
+  const progressPercentage = Math.min(Math.round((paymentMade / totalAmount) * 100), 100);
+  const balance = totalAmount - paymentMade;
 
   return (
     <div className="p-6 space-y-6 animate-fade-in-slow">
@@ -70,7 +78,7 @@ export default function MyFees() {
           <CardContent className="p-4 flex justify-between items-center">
             <div>
               <p className="text-sm font-medium text-gray-500">Current Balance</p>
-              <h2 className="text-2xl font-bold text-blue-600">RWF {remainingBalance.toLocaleString()}</h2>
+              <h2 className="text-2xl font-bold text-blue-600">RWF {balance.toLocaleString()}</h2>
             </div>
             <div className="p-2 bg-blue-100 rounded text-blue-600"><Wallet size={20} /></div>
           </CardContent>
@@ -80,8 +88,8 @@ export default function MyFees() {
           <CardContent className="p-4 flex justify-between items-center">
             <div>
               <p className="text-sm font-medium text-gray-500">Payment Progress</p>
-              <h2 className="text-2xl font-bold text-green-600">{paymentPercentage}%</h2>
-              <p className="text-xs text-gray-400 mt-1">{isEligible ? 'Eligible for contract' : 'Pay 50% to take contract'}</p>
+              <h2 className="text-2xl font-bold text-green-600">{progressPercentage}%</h2>
+              <p className="text-xs text-gray-400 mt-1">Payment progress this semester</p>
             </div>
             <div className="p-2 bg-green-100 rounded text-green-600"><FileText size={20} /></div>
           </CardContent>

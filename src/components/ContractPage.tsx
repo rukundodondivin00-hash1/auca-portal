@@ -67,6 +67,7 @@ export default function ContractPage() {
   const remainingBalance = data?.financial?.remainingBalance || (totalAmount - paymentMade);
   const isEligible = data?.financial?.isEligibleForContract ?? false;
   const hasContract = data?.contract?.hasContract === true;
+  const contractStatus = data?.contract?.status;
 
   const sumEntered = installments.reduce((sum, inst) => sum + (Number(inst.amount) || 0), 0);
   const isAmountsValid = sumEntered > 0 && sumEntered === remainingBalance && installments.every(inst => inst.date && Number(inst.amount) > 0);
@@ -111,6 +112,31 @@ export default function ContractPage() {
     }
   };
 
+  if (hasContract) {
+    if (contractStatus === 'COMPLETED') {
+      return (
+        <div className="min-h-[80vh] flex items-center justify-center p-6">
+          <div className="bg-green-50 border border-green-200 p-8 rounded-xl shadow-sm text-center">
+            <CheckCircle2 size={40} className="text-green-600 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-green-700">Contract Fully Paid</h2>
+            <p className="mt-2 text-green-600">Congratulations! You have completed all payments for this semester.</p>
+            <p className="mt-2 text-sm text-gray-600">Your account is fully cleared.</p>
+            <Link to="/contract-details" className="mt-4 inline-block bg-[#00447b] text-white px-6 py-2 rounded-lg font-bold">View Contract Details</Link>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center p-6">
+        <div className="bg-white p-8 rounded-xl shadow-sm text-center">
+          <CheckCircle2 size={40} className="text-green-600 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold">Contract Already Signed</h2>
+          <Link to="/contract-details" className="mt-4 block text-blue-600 font-bold underline">View Contract Details</Link>
+        </div>
+      </div>
+    );
+  }
+
   if (totalAmount === 0) {
     return (
       <div className="min-h-[80vh] flex items-center justify-center p-6">
@@ -123,40 +149,14 @@ export default function ContractPage() {
     );
   }
 
-  if (paymentMade >= totalAmount) {
+  if (semester === 3) {
     return (
       <div className="min-h-[80vh] flex items-center justify-center p-6">
-        <div className="bg-green-50 border border-green-200 p-8 rounded-xl shadow-sm text-center">
-          <CheckCircle2 size={40} className="text-green-600 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-green-700">Congratulations! You're Paid in Full</h2>
-          <p className="mt-2 text-green-600">You have already paid your full tuition of {totalAmount.toLocaleString()} RWF.</p>
-          <p className="mt-2 text-sm text-gray-600">No payment contract is needed.</p>
-          <Link to="/dashboard" className="mt-4 inline-block bg-[#00447b] text-white px-6 py-2 rounded-lg font-bold">Back to Dashboard</Link>
-        </div>
-      </div>
-    );
-  }
-
-  if (hasContract) {
-    const contractStatus = data?.contract?.status;
-    if (contractStatus === 'COMPLETED') {
-      return (
-        <div className="min-h-[80vh] flex items-center justify-center p-6">
-          <div className="bg-green-50 border border-green-200 p-8 rounded-xl shadow-sm text-center">
-            <CheckCircle2 size={40} className="text-green-600 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-green-700">Congratulations! Your Account is Fully Cleared</h2>
-            <p className="mt-2 text-green-600">You have successfully paid off your entire contract for this semester.</p>
-            <Link to="/contract-details" className="mt-4 inline-block bg-[#00447b] text-white px-6 py-2 rounded-lg font-bold">View Contract Details</Link>
-          </div>
-        </div>
-      );
-    }
-    return (
-      <div className="min-h-[80vh] flex items-center justify-center p-6">
-        <div className="bg-white p-8 rounded-xl shadow-sm text-center">
-          <CheckCircle2 size={40} className="text-green-600 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold">Contract Already Signed</h2>
-          <Link to="/contract-details" className="mt-4 block text-blue-600 font-bold underline">View Contract Details</Link>
+        <div className="bg-gray-50 border border-gray-200 p-8 rounded-xl shadow-sm text-center">
+          <AlertTriangle size={40} className="text-gray-600 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-700">Summer Semester</h2>
+          <p className="mt-2 text-gray-600">There is no payment contract available for the summer semester.</p>
+          <p className="mt-2 text-sm text-gray-500">The summer semester begins in early June and runs for 8 weeks.</p>
         </div>
       </div>
     );
@@ -175,13 +175,15 @@ export default function ContractPage() {
     );
   }
 
-  if (semester === 3) {
+  if (paymentMade >= totalAmount) {
     return (
       <div className="min-h-[80vh] flex items-center justify-center p-6">
-        <div className="bg-gray-50 border border-gray-200 p-8 rounded-xl shadow-sm text-center">
-          <AlertTriangle size={40} className="text-gray-600 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-700">Summer Semester</h2>
-          <p className="mt-2 text-gray-600">There is no contract available for the summer semester.</p>
+        <div className="bg-green-50 border border-green-200 p-8 rounded-xl shadow-sm text-center">
+          <CheckCircle2 size={40} className="text-green-600 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-green-700">Paid in Full</h2>
+          <p className="mt-2 text-green-600">You have already paid your full tuition of {totalAmount.toLocaleString()} RWF.</p>
+          <p className="mt-2 text-sm text-gray-600">No payment contract is needed.</p>
+          <Link to="/dashboard" className="mt-4 inline-block bg-[#00447b] text-white px-6 py-2 rounded-lg font-bold">Back to Dashboard</Link>
         </div>
       </div>
     );

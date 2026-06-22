@@ -36,7 +36,7 @@ export default function InitiatePaymentModal({ isOpen, onClose, onPaymentSuccess
   const shortfall = Math.ceil((totalAmount * 0.5) - paymentMade);
 
   const handleInitiatePayment = async () => {
-    if (!paymentAmount) return;
+    if (!paymentAmount || Number(paymentAmount) < 1000) return;
     setIsProcessing(true);
     
     const currentStudentId = dashboardData?.student?.studentId || dashboardData?.student?.id || '25307';
@@ -122,8 +122,8 @@ export default function InitiatePaymentModal({ isOpen, onClose, onPaymentSuccess
           </div>
 
           <div className="bg-gray-50 p-3 rounded-md text-sm text-gray-600">
-            <p>Payer code: {dashboardData?.student?.studentId || '25307'}</p>
-            <p>Payer name: {dashboardData?.student?.studentName || 'Demo Student'}</p>
+            <p>Payer code: {dashboardData?.student?.studentId || dashboardData?.student?.id || dashboardData?.student?.username || ''}</p>
+            <p>Payer name: {dashboardData?.student?.studentName || dashboardData?.student?.name || dashboardData?.student?.fullName || ''}</p>
           </div>
         </div>
 
