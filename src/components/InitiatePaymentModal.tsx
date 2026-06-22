@@ -14,6 +14,9 @@ interface PaymentModalProps {
 
 export default function InitiatePaymentModal({ isOpen, onClose, onPaymentSuccess }: PaymentModalProps) {
   const [paymentAmount, setPaymentAmount] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [channel, setChannel] = useState('MOMO');
+  const [feeType, setFeeType] = useState('TUITION_FEE');
   const [isProcessing, setIsProcessing] = useState(false);
   const [dashboardData, setDashboardData] = useState<any>(null);
 
@@ -29,21 +32,50 @@ export default function InitiatePaymentModal({ isOpen, onClose, onPaymentSuccess
 
   const totalAmount = dashboardData?.financial?.totalFees || 0;
   const paymentMade = dashboardData?.financial?.paidAmount || 0;
-  const remainingBalance = dashboardData?.financial?.remainingBalance ?? (totalAmount - paymentMade);
   const isEligible = dashboardData?.financial?.isEligibleForContract ?? false;
   const shortfall = Math.ceil((totalAmount * 0.5) - paymentMade);
 
-  const handleInitiatePayment = () => {
+  const handleInitiatePayment = async () => {
     if (!paymentAmount) return;
     setIsProcessing(true);
-    setTimeout(() => {
+    
+    const currentStudentId = dashboardData?.student?.studentId || dashboardData?.student?.id || '25307';
+    
+    // Explicitly define the backend URL
+    const backendUrl = 'http://localhost:8083';
+
+    try {
+      const response = await fetch(`${backendUrl}/api/payments/confirm`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json', 
+          'X-Student-Id': currentStudentId,
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
+        },
+        body: JSON.stringify({
+          amount: Number(paymentAmount),
+          channel,
+          feeType,
+          phoneNumber
+        })
+      });
+
+      if (!response.ok) {
+        // Try to get a helpful error message from the backend
+        const errorText = await response.text();
+        throw new Error(errorText || `Payment failed (Status: ${response.status})`);
+      }
+      
       setPaymentAmount('');
-      setIsProcessing(false);
+      setPhoneNumber('');
       onClose();
       onPaymentSuccess?.();
-    }, 1500);
+    } catch (error: any) {
+      alert(error.message || 'Payment failed. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
-
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -69,23 +101,23 @@ export default function InitiatePaymentModal({ isOpen, onClose, onPaymentSuccess
           <div className="flex gap-4">
             <div className="flex-1 space-y-1">
               <label className="text-sm font-medium">Channel</label>
-              <Select defaultValue="momo">
+              <Select value={channel} onValueChange={setChannel}>
                 <SelectTrigger><SelectValue placeholder="Select Channel" /></SelectTrigger>
-                <SelectContent><SelectItem value="momo">MOMO</SelectItem></SelectContent>
+                <SelectContent><SelectItem value="MOMO">MOMO</SelectItem></SelectContent>
               </Select>
             </div>
             <div className="flex-1 space-y-1">
               <label className="text-sm font-medium">Fee Type</label>
-              <Select defaultValue="tuition">
+              <Select value={feeType} onValueChange={setFeeType}>
                 <SelectTrigger><SelectValue placeholder="Select Fee Type" /></SelectTrigger>
-                <SelectContent><SelectItem value="tuition">TUITION_FEE</SelectItem></SelectContent>
+                <SelectContent><SelectItem value="TUITION_FEE">TUITION_FEE</SelectItem></SelectContent>
               </Select>
             </div>
           </div>
 
           <div className="space-y-1">
             <label className="text-sm font-medium">Phone Number <span className="text-red-500">*</span></label>
-            <Input type="text" placeholder="e.g. 0781234567" />
+            <Input type="text" placeholder="e.g. 0781234567" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} />
             <p className="text-xs text-gray-500">Digits only - Local format (07XXXXXXXX or 250XXXXXXXXX)</p>
           </div>
 

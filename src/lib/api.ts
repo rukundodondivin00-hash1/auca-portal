@@ -43,7 +43,7 @@ export interface Installment {
   amount: number;
   dueDate: string;
   paidDate: string | null;
-  status: 'PENDING' | 'PAID' | 'OVERDUE';
+  status: 'PENDING' | 'PAID' | 'OVERDUE' | 'PARTIALLY_PAID';
   penaltyAmount: number;
 }
 
@@ -94,6 +94,15 @@ export const studentApi = {
   getDashboard: () => api.get('/api/dashboard'),
   createContract: (payload: any) => api.post('/api/contracts', payload),
   getMyContracts: () => api.get('/api/contracts/my-contracts'),
+};
+
+export const paymentApi = {
+  confirmPayment: (studentId: string, data: { amount: number; channel: string; feeType: string; phoneNumber: string }) =>
+    fetch('/api/payments/confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Student-Id': studentId },
+      body: JSON.stringify(data)
+    }),
 };
 
 export const adminApi = {
@@ -147,4 +156,3 @@ export const adminApi = {
 };
 
 export default api;
-

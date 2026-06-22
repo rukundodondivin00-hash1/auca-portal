@@ -45,6 +45,11 @@ export default function ContractDetails() {
   const installmentPaid = contract.installments?.reduce((s: number, i: any) => s + (i.amountPaid || 0), 0) || 0;
   const paymentMade = initialPayment + installmentPaid;
   const progressPercentage = Math.min(Math.round((paymentMade / totalAmount) * 100), 100);
+  const balance = totalAmount - paymentMade;
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-RW', { style: 'currency', currency: 'RWF' }).format(amount);
+  };
 
   return (
     <div className="space-y-6 animate-fade-in-slow pb-12">
@@ -76,6 +81,30 @@ export default function ContractDetails() {
         </div>
       </div>
 
+      {contract.status === 'COMPLETED' && (
+        <div className="bg-green-50 border-l-4 border-green-500 p-4 mb-6 rounded-md">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <span className="text-green-500 text-2xl">🎉</span>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-lg font-bold text-green-800">
+                Congratulations, {contract.studentName}!
+              </h3>
+              <p className="text-sm text-green-700 mt-1">
+                You have successfully paid off your entire contract for this semester.
+                Your account is fully cleared!
+              </p>
+              {balance > 0 && (
+                <p className="text-sm text-green-700 font-semibold mt-2">
+                  Note: You have an overpayment credit of {formatCurrency(balance)}.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
         <div className="px-6 py-4 border-b bg-gray-50 flex items-center gap-2">
           <CalendarClock className="text-gray-500" />
@@ -103,7 +132,7 @@ export default function ContractDetails() {
                     <td className="px-6 py-4 text-right font-bold">{Number(inst.amountDue || 0).toLocaleString()} RWF</td>
                     <td className="px-6 py-4 text-right">{Number(inst.amountPaid || 0).toLocaleString()} RWF</td>
                     <td className="px-6 py-4 text-center">
-                      <span className={`px-2.5 py-1 text-xs font-bold rounded-full ${inst.status === 'PAID' ? 'bg-green-100 text-green-700' : inst.status === 'OVERDUE' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                      <span className={`px-2.5 py-1 text-xs font-bold rounded-full ${inst.status === 'PAID' ? 'bg-green-100 text-green-700' : inst.status === 'OVERDUE' ? 'bg-red-100 text-red-700' : inst.status === 'PARTIALLY_PAID' ? 'bg-yellow-100 text-yellow-700' : 'bg-amber-100 text-amber-700'}`}>
                         {inst.status}
                       </span>
                     </td>

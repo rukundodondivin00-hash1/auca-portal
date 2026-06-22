@@ -138,6 +138,19 @@ export default function ContractPage() {
   }
 
   if (hasContract) {
+    const contractStatus = data?.contract?.status;
+    if (contractStatus === 'COMPLETED') {
+      return (
+        <div className="min-h-[80vh] flex items-center justify-center p-6">
+          <div className="bg-green-50 border border-green-200 p-8 rounded-xl shadow-sm text-center">
+            <CheckCircle2 size={40} className="text-green-600 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-green-700">Congratulations! Your Account is Fully Cleared</h2>
+            <p className="mt-2 text-green-600">You have successfully paid off your entire contract for this semester.</p>
+            <Link to="/contract-details" className="mt-4 inline-block bg-[#00447b] text-white px-6 py-2 rounded-lg font-bold">View Contract Details</Link>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="min-h-[80vh] flex items-center justify-center p-6">
         <div className="bg-white p-8 rounded-xl shadow-sm text-center">
