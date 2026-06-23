@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import { 
   Pin, LayoutDashboard, FileSignature, Users, 
-  History, Settings, LogOut, GraduationCap 
+  History, Settings, LogOut, GraduationCap, BookOpen 
 } from 'lucide-react';
 
 export default function AdminSidebar() {
@@ -49,6 +49,14 @@ export default function AdminSidebar() {
               label="Dashboard" 
               href="/admin/dashboard" 
               isActive={location.pathname === '/admin/dashboard'} 
+              isExpanded={isExpanded} 
+            />
+            {/* NEW ACADEMIC SETUP LINK */}
+            <NavItem 
+              icon={<BookOpen size={20} />} 
+              label="Academic Setup" 
+              href="/admin/academic" 
+              isActive={location.pathname === '/admin/academic'} 
               isExpanded={isExpanded} 
             />
             <NavItem 

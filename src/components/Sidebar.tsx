@@ -1,7 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router'; 
 import { Pin, TrendingUp, Award, BookOpen, DollarSign, Bell, MessageSquare, Settings, LogOut, GraduationCap, FileSignature, FileText, Calendar } from 'lucide-react';
-import { studentApi } from '@/lib/api';
+
+// Mock APIs for the preview environment. 
+// In your local project, remove these mocks and restore: import { studentApi, registrationApi } from '@/lib/api';
+const studentApi = {
+  getDashboard: () => Promise.resolve({ data: { data: { contract: { hasContract: false, id: null } } } })
+};
+
+const registrationApi = {
+  getTerm: () => Promise.resolve({ data: { active: true } })
+};
 
 export default function Sidebar() {
   const [isPinned, setIsPinned] = useState(false);
@@ -10,6 +19,9 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const [hasContract, setHasContract] = useState(false);
   const [loadingContract, setLoadingContract] = useState(true);
+  
+  // New state to check if registration is open
+  const [isRegistrationOpen, setIsRegistrationOpen] = useState(false);
 
   useEffect(() => {
     const checkContractStatus = async () => {
@@ -17,14 +29,31 @@ export default function Sidebar() {
         const response = await studentApi.getDashboard();
         const data = response.data?.data;
         const contract = data?.contract;
-        setHasContract(contract && (contract.hasContract || contract.id));
+        
+        // FIX: Using Boolean() ensures it always returns exactly true or false
+        setHasContract(Boolean(contract?.hasContract || contract?.id));
+        
       } catch (error) {
         setHasContract(false);
       } finally {
         setLoadingContract(false);
       }
     };
+
+    // Check if term is active to show/hide the Registration button
+    const checkRegistrationStatus = async () => {
+      try {
+        const response = await registrationApi.getTerm();
+        if (response.data && response.data.active) {
+          setIsRegistrationOpen(true);
+        }
+      } catch (error) {
+        setIsRegistrationOpen(false);
+      }
+    };
+
     checkContractStatus();
+    checkRegistrationStatus();
   }, [location.pathname]);
 
   const handleLogout = () => {
@@ -66,7 +95,12 @@ export default function Sidebar() {
           <ul className="space-y-1">
             <NavItem icon={<TrendingUp size={20} />} label="My Dashboard" href="/student-dashboard" isActive={['/student-dashboard', '/dashboard', '/'].includes(location.pathname)} isExpanded={isExpanded} />
             <NavItem icon={<Award size={20} />} label="Transcript" href="/my-transcript" isActive={location.pathname === '/my-transcript'} isExpanded={isExpanded} />
-            <NavItem icon={<Calendar size={20} />} label="Registration" href="/my-registration" isActive={location.pathname === '/my-registration'} isExpanded={isExpanded} />
+            
+            {/* Conditional Rendering: Only show if Registration is Open */}
+            {isRegistrationOpen && (
+              <NavItem icon={<Calendar size={20} />} label="Registration" href="/my-registration" isActive={location.pathname === '/my-registration'} isExpanded={isExpanded} />
+            )}
+            
             <NavItem icon={<BookOpen size={20} />} label="Academic Bulletin" href="/my-bulletin" isActive={location.pathname === '/my-bulletin'} isExpanded={isExpanded} />
             <NavItem icon={<DollarSign size={20} />} label="My Fees" href="/my-fees" isActive={location.pathname === '/my-fees'} isExpanded={isExpanded} />
             {!loadingContract && !hasContract && (

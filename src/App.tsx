@@ -15,6 +15,7 @@ import MyRegistration from "./components/MyRegistration";
 import Login from "./components/authentication/Login"; 
 import AdminLogin from "./components/admin/AdminLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminAcademic from "./pages/admin/AdminAcademic"; // <-- ADDED THIS IMPORT
 import AdminContracts from "./pages/admin/AdminContracts";
 import AdminContractDetails from "./pages/admin/AdminContractDetails";
 import AdminStudents from "./pages/admin/AdminStudents";
@@ -87,6 +88,7 @@ export default function App() {
                   <Routes>
                     <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
                     <Route path="/dashboard" element={<AdminDashboard />} />
+                    <Route path="/academic" element={<AdminAcademic />} /> {/* <-- ADDED THIS ROUTE */}
                     <Route path="/contracts" element={<AdminContracts />} />
                     <Route path="/contracts/:id" element={<AdminContractDetails />} />
                     <Route path="/students" element={<AdminStudents />} />

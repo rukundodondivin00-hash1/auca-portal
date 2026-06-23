@@ -1,5 +1,6 @@
 import axios from 'axios';
 
+// Financial/Contract Backend (Port 8083)
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8083',
   headers: {
@@ -9,6 +10,22 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('jwt_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Academic Backend for Registration (Port 8080)
+const academicApi = axios.create({
+  baseURL: 'http://localhost:8080',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+academicApi.interceptors.request.use((config) => {
   const token = localStorage.getItem('jwt_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -102,6 +119,16 @@ export const paymentApi = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Student-Id': studentId },
       body: JSON.stringify(data)
+    }),
+};
+
+// NEW: Registration API Endpoints
+export const registrationApi = {
+  getTerm: () => academicApi.get('/api/v1/registration/term'),
+  getAvailableCourses: () => academicApi.get('/api/v1/registration/available-courses'),
+  submitRegistration: (studentId: string, courseIds: number[]) => 
+    academicApi.post('/api/v1/registration/submit', courseIds, {
+      headers: { 'X-Student-Id': studentId }
     }),
 };
 
