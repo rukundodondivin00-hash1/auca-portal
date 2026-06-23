@@ -4,16 +4,17 @@ import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
 import { authApi } from '@/lib/api';
 
 interface LoginResponse {
-  token: string;
+  username: string;
+  email: string;
   role: string;
-  username?: string;
-  fullName?: string;
-  email?: string;
-  studentId?: string;
-  studentName?: string;
-  id?: string;
-  name?: string;
+  permissions: string[];
+  fullName: string;
 }
+
+// Simple token generator for demo - replace with actual JWT from backend
+const generateMockToken = (username: string, role: string) => {
+  return btoa(JSON.stringify({ username, role, exp: Date.now() + 3600000 }));
+};
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
@@ -33,17 +34,15 @@ export default function Login() {
       });
 
       const data: LoginResponse = response.data?.data || response.data || {};
-      const token = data?.token;
       const role = data?.role;
 
-      if (token && role) {
+      if (role) {
+        const token = generateMockToken(email, role);
         localStorage.setItem('jwt_token', token);
         const normalizedRole = role === 'STUDENT' ? 'ROLE_STUDENT' : role;
-        const studentId = data.username || data.studentId || data.id;
-        const studentName = data.fullName || data.studentName || data.name;
         localStorage.setItem('user_role', normalizedRole);
-        if (studentId) localStorage.setItem('student_id', studentId);
-        if (studentName) localStorage.setItem('student_name', studentName);
+        if (data.username) localStorage.setItem('student_id', data.username);
+        if (data.fullName) localStorage.setItem('student_name', data.fullName);
         navigate(normalizedRole === 'ROLE_ADMIN' ? '/admin/dashboard' : '/student-dashboard');
       } else {
         throw new Error("Invalid response from server");

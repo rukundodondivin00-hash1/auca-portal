@@ -12,29 +12,25 @@ export default function WelcomeBanner() {
   const [totalAmount, setTotalAmount] = useState(0);
   const [hasContract, setHasContract] = useState(false);
   const [isEligibleForContract, setIsEligibleForContract] = useState(false);
-
-  const fetchData = () => {
+  
+  useEffect(() => {
+    const storedStudentId = localStorage.getItem('student_id') || '';
+    const storedStudentName = localStorage.getItem('student_name') || '';
+    setStudentId(storedStudentId);
+    setStudentName(storedStudentName);
+    
     studentApi.getDashboard()
       .then(res => {
-        const data = res.data?.data;
-        const student = data?.student || data;
-        const contract = data?.contract;
-        const financial = data?.financial;
-        setStudentName(student?.studentName || student?.name || student?.fullName || data?.studentName || data?.fullName || localStorage.getItem('student_name') || "");
-        setStudentId(student?.studentId || student?.id || student?.username || data?.studentId || data?.id || data?.username || localStorage.getItem('student_id') || "");
-        setTotalAmount(financial?.totalFees || 0);
-        const hasContractFlag = financial?.hasContract ?? contract?.hasContract ?? false;
-        setHasContract(hasContractFlag);
-        setIsEligibleForContract(!!financial?.isEligibleForContract);
+        const data = res.data?.data || res.data;
+        setStudentName(data?.studentName || data?.fullName || storedStudentName || "");
+        setStudentId(data?.studentId || storedStudentId || "");
+        setTotalAmount(data?.totalFee || 0);
+        setHasContract(!!data?.contract);
       })
       .catch(() => {
         setHasContract(false);
       })
       .finally(() => setLoading(false));
-  };
-
-  useEffect(() => {
-    fetchData();
   }, []);
 
   if (loading) {
@@ -86,9 +82,6 @@ export default function WelcomeBanner() {
       <InitiatePaymentModal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)}
-        onPaymentSuccess={() => {
-          setTimeout(fetchData, 100);
-        }}
       />
     </div>
   );

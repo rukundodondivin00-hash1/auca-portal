@@ -1,15 +1,15 @@
 import axios from 'axios';
 
-// Financial/Contract Backend (Port 8083)
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8083',
+// Contract System Backend (Port 8083) - for contracts and payments
+const contractApi = axios.create({
+  baseURL: import.meta.env.VITE_CONTRACT_API_URL || 'http://localhost:8083',
   headers: {
     'Content-Type': 'application/json',
   },
   responseType: 'json' as const,
 });
 
-api.interceptors.request.use((config) => {
+contractApi.interceptors.request.use((config) => {
   const token = localStorage.getItem('jwt_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -17,15 +17,16 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Academic Backend for Registration (Port 8080)
-const academicApi = axios.create({
-  baseURL: 'http://localhost:8080',
+// IMS Registration Backend (Port 8080) - for registration, auth, courses
+const imsApi = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080',
   headers: {
     'Content-Type': 'application/json',
   },
+  responseType: 'json' as const,
 });
 
-academicApi.interceptors.request.use((config) => {
+imsApi.interceptors.request.use((config) => {
   const token = localStorage.getItem('jwt_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -66,8 +67,6 @@ export interface Installment {
 
 export interface Penalty {
   id: string;
-  installmentId: string;
-  contractId: string;
   amount: number;
   reason: string;
   createdAt: string;
@@ -91,95 +90,119 @@ export interface PaginatedResponse<T> {
   size: number;
 }
 
+export interface Term {
+  id: string;
+  active: boolean;
+}
+
+export interface Course {
+  id: number;
+  courseCode: string;
+  courseName: string;
+  credits: number;
+  fee: number;
+}
+
 export interface ContractStatusUpdate {
   status: 'PENDING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED' | 'OVERDUE';
 }
 
 // ==========================================
-// 4. API ENDPOINTS
+// API ENDPOINTS
 // ==========================================
 
+// Auth - IMS Backend
 export const authApi = {
-  login: (credentials: any) => api.post('/api/auth/login', credentials),
+  login: (credentials: any) => imsApi.post('/api/auth/login', credentials),
 };
 
 export const adminAuthApi = {
-  login: (credentials: any) => api.post('/api/admin/login', credentials),
+  login: (credentials: any) => contractApi.post('/api/admin/login', credentials),
 };
 
+// Student Dashboard - IMS Backend with X-Student-Id header
 export const studentApi = {
-  getDashboard: () => api.get('/api/dashboard'),
-  createContract: (payload: any) => api.post('/api/contracts', payload),
-  getMyContracts: () => api.get('/api/contracts/my-contracts'),
+  getDashboard: () => {
+    const studentId = localStorage.getItem('student_id') || '';
+    return imsApi.get('/api/auth/login', {
+      headers: { 'X-Student-Id': studentId }
+    });
+  },
+  createContract: (payload: any) => contractApi.post('/api/contracts', payload),
+  getMyContracts: () => contractApi.get('/api/contracts/my-contracts'),
 };
 
+// Finance - IMS Backend
 export const paymentApi = {
-  confirmPayment: (studentId: string, data: { amount: number; channel: string; feeType: string; phoneNumber: string }) =>
-    fetch('/api/payments/confirm', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Student-Id': studentId },
-      body: JSON.stringify(data)
+  getMyBalance: (studentId: string) => 
+    imsApi.get('/api/v1/finance/student-payments/my-balance', {
+      headers: { 'X-Student-Id': studentId }
     }),
-};
-
-// NEW: Registration API Endpoints
-export const registrationApi = {
-  getTerm: () => academicApi.get('/api/v1/registration/term'),
-  getAvailableCourses: () => academicApi.get('/api/v1/registration/available-courses'),
-  submitRegistration: (studentId: string, courseIds: number[]) => 
-    academicApi.post('/api/v1/registration/submit', courseIds, {
+  processPayment: (studentId: string, data: { amount: number; transactionId?: string }) => 
+    imsApi.post('/api/v1/finance/student-payments/pay', data, {
       headers: { 'X-Student-Id': studentId }
     }),
 };
 
-export const adminApi = {
-  getContracts: (page = 0, size = 20, sortBy = 'createdAt', direction = 'desc') =>
-    api.get<PaginatedResponse<Contract>>('/api/admin/contracts', { params: { page, size, sortBy, direction } }),
-
-  getContract: (id: string) =>
-    api.get<Contract>(`/api/admin/contracts/${id}`),
-
-  getContractsByStudent: (studentId: string) =>
-    api.get<PaginatedResponse<Contract>>(`/api/admin/contracts/student/${studentId}`),
-
-  getContractsByStatus: (status: string) =>
-    api.get<PaginatedResponse<Contract>>(`/api/admin/contracts/status/${status}`),
-
-  getInstallments: (page = 0, size = 20, sortBy = 'createdAt', direction = 'desc') =>
-    api.get<PaginatedResponse<Installment>>('/api/admin/installments', { params: { page, size, sortBy, direction } }),
-
-  getInstallmentsByContract: (contractId: string) =>
-    api.get<Installment[]>(`/api/admin/installments/contract/${contractId}`),
-
-  getPenalties: (page = 0, size = 20, sortBy = 'createdAt', direction = 'desc') =>
-    api.get<PaginatedResponse<Penalty>>('/api/admin/penalties', { params: { page, size, sortBy, direction } }),
-
-  getPenaltiesByInstallment: (installmentId: string) =>
-    api.get<Penalty[]>(`/api/admin/penalties/installment/${installmentId}`),
-
-  getPenaltiesByContract: (contractId: string) =>
-    api.get<Penalty[]>(`/api/admin/penalties/contract/${contractId}`),
-
-  searchStudents: (keyword = '', page = 0, size = 20) =>
-    api.get<PaginatedResponse<StudentSummary>>('/api/admin/students', { params: { keyword, page, size } }),
-
-  getStudentSummary: (studentId: string) =>
-    api.get<StudentSummary>(`/api/admin/students/${studentId}/summary`),
-
-  updateContractStatus: (id: string, data: ContractStatusUpdate) =>
-    api.patch(`/api/admin/contracts/${id}/status`, data),
-
-  deleteContract: (id: string) =>
-    api.delete(`/api/admin/contracts/${id}`),
-
-  bulkUpdateContractStatus: (contractIds: string[], status: string) =>
-    api.patch('/api/admin/contracts/bulk-status', { contractIds, status }),
-
-  updateInstallmentStatus: (id: string, status: 'PAID' | 'PENDING') =>
-    api.patch(`/api/admin/installments/${id}/status`, { status }),
-
-  waiveInstallmentPenalty: (id: string) =>
-    api.post(`/api/admin/installments/${id}/waive-penalty`),
+// Registration - IMS Backend
+export const registrationApi = {
+  getTerm: () => imsApi.get<Term>('/api/v1/registration/term'),
+  getAvailableCourses: () => imsApi.get<Course[]>('/api/v1/registration/available-courses'),
+  submitRegistration: (studentId: string, courseIds: number[]) => 
+    imsApi.post('/api/v1/registration/submit', courseIds, {
+      headers: { 'X-Student-Id': studentId }
+    }),
 };
 
-export default api;
+// Admin Academic - IMS Backend
+export const adminAcademicApi = {
+  addCourse: (course: Partial<Course>) => imsApi.post<Course>('/api/v1/admin/academic/courses', course),
+  activateTerm: (termId: string) => imsApi.put(`/api/v1/admin/academic/terms/${termId}/activate`),
+};
+
+// Admin - Contract System Backend
+export const adminApi = {
+  getContracts: (page = 0, size = 20, sortBy = 'createdAt', direction = 'desc') =>
+    contractApi.get<PaginatedResponse<Contract>>('/api/admin/contracts', { params: { page, size, sortBy, direction } }),
+
+  getContract: (id: string) =>
+    contractApi.get<Contract>(`/api/admin/contracts/${id}`),
+
+  getContractsByStudent: (studentId: string) =>
+    contractApi.get<PaginatedResponse<Contract>>(`/api/admin/contracts/student/${studentId}`),
+
+  getContractsByStatus: (status: string) =>
+    contractApi.get<PaginatedResponse<Contract>>(`/api/admin/contracts/status/${status}`),
+
+  getInstallments: (page = 0, size = 20) =>
+    contractApi.get<PaginatedResponse<Installment>>('/api/admin/installments', { params: { page, size } }),
+
+  getInstallmentsByContract: (contractId: string) =>
+    contractApi.get<Installment[]>(`/api/admin/installments/contract/${contractId}`),
+
+  getPenalties: (page = 0, size = 20) =>
+    contractApi.get<PaginatedResponse<Penalty>>('/api/admin/penalties', { params: { page, size } }),
+
+  getPenaltiesByContract: (contractId: string) =>
+    contractApi.get<Penalty[]>(`/api/admin/penalties/contract/${contractId}`),
+
+  searchStudents: (keyword = '', page = 0, size = 20) =>
+    contractApi.get<PaginatedResponse<StudentSummary>>('/api/admin/students', { params: { keyword, page, size } }),
+
+  getStudentSummary: (studentId: string) =>
+    contractApi.get<StudentSummary>(`/api/admin/students/${studentId}/summary`),
+
+  updateContractStatus: (id: string, data: ContractStatusUpdate) =>
+    contractApi.patch(`/api/admin/contracts/${id}/status`, data),
+
+  deleteContract: (id: string) =>
+    contractApi.delete(`/api/admin/contracts/${id}`),
+
+  updateInstallmentStatus: (id: string, status: 'PAID' | 'PENDING') =>
+    contractApi.patch(`/api/admin/installments/${id}/status`, { status }),
+
+  waiveInstallmentPenalty: (id: string) =>
+    contractApi.post(`/api/admin/installments/${id}/waive-penalty`),
+};
+
+export default { contractApi, imsApi };

@@ -130,8 +130,11 @@ export default function App() {
                       </div>
                     } />
                     
-                    <Route path="/contract" element={<ContractPage />} />
-                    <Route path="/contract-details" element={<ContractDetails />} />
+<Route path="/contract" element={<ContractPage />} />
+                     <Route path="/contract-details" element={<ContractDetails />} />
+                     <Route path="/announcements" element={<div className="p-6 bg-white rounded-lg border shadow-sm"><h2 className="text-xl font-bold">Announcements</h2><p className="text-gray-500 mt-2">View important announcements from the university.</p></div>} />
+                     <Route path="/chat" element={<div className="p-6 bg-white rounded-lg border shadow-sm"><h2 className="text-xl font-bold">Chat</h2><p className="text-gray-500 mt-2">Communicate with academic advisors and staff.</p></div>} />
+                     <Route path="/settings" element={<div className="p-6 bg-white rounded-lg border shadow-sm"><h2 className="text-xl font-bold">Settings</h2><p className="text-gray-500 mt-2">Manage your account preferences.</p></div>} />
                     
                   </Routes>
 

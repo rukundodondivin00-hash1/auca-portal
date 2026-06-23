@@ -1,16 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router'; 
+import { Link, useLocation, useNavigate } from 'react-router';
 import { Pin, TrendingUp, Award, BookOpen, DollarSign, Bell, MessageSquare, Settings, LogOut, GraduationCap, FileSignature, FileText, Calendar } from 'lucide-react';
-
-// Mock APIs for the preview environment. 
-// In your local project, remove these mocks and restore: import { studentApi, registrationApi } from '@/lib/api';
-const studentApi = {
-  getDashboard: () => Promise.resolve({ data: { data: { contract: { hasContract: false, id: null } } } })
-};
-
-const registrationApi = {
-  getTerm: () => Promise.resolve({ data: { active: true } })
-};
+import { studentApi, registrationApi } from '@/lib/api';
 
 export default function Sidebar() {
   const [isPinned, setIsPinned] = useState(false);
@@ -19,20 +10,15 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const [hasContract, setHasContract] = useState(false);
   const [loadingContract, setLoadingContract] = useState(true);
-  
-  // New state to check if registration is open
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false);
 
   useEffect(() => {
     const checkContractStatus = async () => {
       try {
+        const studentId = localStorage.getItem('student_id') || '';
         const response = await studentApi.getDashboard();
-        const data = response.data?.data;
-        const contract = data?.contract;
-        
-        // FIX: Using Boolean() ensures it always returns exactly true or false
-        setHasContract(Boolean(contract?.hasContract || contract?.id));
-        
+        const data = response.data?.data || response.data;
+        setHasContract(!!data?.contract);
       } catch (error) {
         setHasContract(false);
       } finally {
@@ -40,7 +26,6 @@ export default function Sidebar() {
       }
     };
 
-    // Check if term is active to show/hide the Registration button
     const checkRegistrationStatus = async () => {
       try {
         const response = await registrationApi.getTerm();
@@ -96,7 +81,6 @@ export default function Sidebar() {
             <NavItem icon={<TrendingUp size={20} />} label="My Dashboard" href="/student-dashboard" isActive={['/student-dashboard', '/dashboard', '/'].includes(location.pathname)} isExpanded={isExpanded} />
             <NavItem icon={<Award size={20} />} label="Transcript" href="/my-transcript" isActive={location.pathname === '/my-transcript'} isExpanded={isExpanded} />
             
-            {/* Conditional Rendering: Only show if Registration is Open */}
             {isRegistrationOpen && (
               <NavItem icon={<Calendar size={20} />} label="Registration" href="/my-registration" isActive={location.pathname === '/my-registration'} isExpanded={isExpanded} />
             )}
@@ -129,7 +113,13 @@ export default function Sidebar() {
   );
 }
 
-function NavItem({ icon, label, href = "#", isActive = false, isExpanded }: any) {
+function NavItem({ icon, label, href = "#", isActive = false, isExpanded }: { 
+  icon: React.ReactNode, 
+  label: string, 
+  href?: string, 
+  isActive?: boolean, 
+  isExpanded: boolean 
+}) {
   return (
     <li>
       <Link to={href} className={`flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors whitespace-nowrap ${isActive ? 'bg-[#00447b] text-white shadow-md' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}>
