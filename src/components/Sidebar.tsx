@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { Pin, TrendingUp, Award, BookOpen, DollarSign, Bell, MessageSquare, Settings, LogOut, GraduationCap, FileSignature, FileText, Calendar } from 'lucide-react';
 import { studentApi, registrationApi } from '@/lib/api';
+import aucaLogo from '@/images/AUCA-logo.png';
 
 export default function Sidebar() {
   const [isPinned, setIsPinned] = useState(false);
@@ -60,8 +61,8 @@ export default function Sidebar() {
     >
       <div className="flex items-center justify-between p-4 h-16 shrink-0">
         <Link to="/dashboard" className="flex items-center gap-3 overflow-hidden whitespace-nowrap">
-          <div className="text-blue-900 bg-blue-100 p-1.5 rounded-full min-w-[32px] flex items-center justify-center">
-            <GraduationCap size={20} />
+          <div className="flex items-center justify-center h-8 w-8 min-w-[32px]">
+            <img src={aucaLogo} alt="AUCA Logo" className="object-contain w-full h-full" />
           </div>
           <div className={`font-bold text-xs text-blue-900 leading-tight transition-opacity duration-300 ${isExpanded ? 'opacity-100' : 'opacity-0'}`}>
             ADVENTIST UNIVERSITY<br/>OF CENTRAL AFRICA
@@ -91,13 +92,6 @@ export default function Sidebar() {
               <NavItem icon={<FileSignature size={20} />} label="Sign Contract" href="/contract" isActive={location.pathname === '/contract'} isExpanded={isExpanded} />
             )}
             <NavItem icon={<FileText size={20} />} label="Contract Details" href="/contract-details" isActive={location.pathname === '/contract-details'} isExpanded={isExpanded} />
-          </ul>
-        </div>
-        <div>
-          <p className={`text-xs font-semibold text-gray-400 mb-2 px-2 transition-opacity duration-300 whitespace-nowrap ${isExpanded ? 'opacity-100' : 'opacity-0'}`}>COMMUNICATION</p>
-          <ul className="space-y-1">
-            <NavItem icon={<Bell size={20} />} label="Announcements" href="/announcements" isActive={location.pathname === '/announcements'} isExpanded={isExpanded} />
-            <NavItem icon={<MessageSquare size={20} />} label="Chat" href="/chat" isActive={location.pathname === '/chat'} isExpanded={isExpanded} />
           </ul>
         </div>
       </div>

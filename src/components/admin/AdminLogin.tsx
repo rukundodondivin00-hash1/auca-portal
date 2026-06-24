@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useLocation } from 'react-router';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 import { adminAuthApi } from '@/lib/api';
+import aucaLogo from '@/images/AUCA-logo.png';
 
 interface LoginResponse {
   token: string;
@@ -11,14 +12,19 @@ interface LoginResponse {
   adminName?: string;
 }
 
+const generateMockToken = (username: string, role: string) => {
+  return btoa(JSON.stringify({ username, role, exp: Date.now() + 3600000 }));
+};
+
 export default function AdminLogin() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  
   const navigate = useNavigate();
+  const location = useLocation();
+  const [message, setMessage] = useState<string | null>(location.state?.message || null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,8 +41,9 @@ export default function AdminLogin() {
       const token = data?.token;
       const role = data?.role;
 
-      if (token && role) {
-        localStorage.setItem('jwt_token', token);
+      if (role) {
+        const mockToken = token || generateMockToken(email, role);
+        localStorage.setItem('jwt_token', mockToken);
         const normalizedRole = role === 'STUDENT' ? 'ROLE_STUDENT' : role;
         localStorage.setItem('user_role', normalizedRole);
         if (data.adminName) localStorage.setItem('admin_name', data.adminName);
@@ -75,7 +82,7 @@ export default function AdminLogin() {
                     <img 
                       alt="AUCA logo" 
                       className="object-contain w-full h-full" 
-                      src="https://upload.wikimedia.org/wikipedia/en/thumb/2/2d/Adventist_University_of_Central_Africa_logo.png/220px-Adventist_University_of_Central_Africa_logo.png" 
+                      src={aucaLogo} 
                     />
                   </div>
                   <div className="mt-6 space-y-1">
@@ -98,7 +105,7 @@ export default function AdminLogin() {
                           <img 
                             alt="logo" 
                             className="object-contain w-full h-full" 
-                            src="https://upload.wikimedia.org/wikipedia/en/thumb/2/2d/Adventist_University_of_Central_Africa_logo.png/220px-Adventist_University_of_Central_Africa_logo.png" 
+                            src={aucaLogo} 
                           />
                         </div>
                       </div>
@@ -111,6 +118,13 @@ export default function AdminLogin() {
                         
                         <div className="mb-6 h-px bg-slate-200/80 dark:bg-slate-800/80"></div>
 
+                        {message && (
+                          <div className="mb-6 bg-green-50 border border-green-200 text-green-700 p-3 rounded-lg flex items-start gap-2 text-sm">
+                            <AlertCircle className="shrink-0 mt-0.5" size={16} />
+                            <p>{message}</p>
+                          </div>
+                        )}
+
                         {errorMessage && (
                           <div className="mb-6 bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg flex items-start gap-2 text-sm">
                             <AlertCircle className="shrink-0 mt-0.5" size={16} />
@@ -121,7 +135,7 @@ export default function AdminLogin() {
                         <form onSubmit={handleLogin} className="space-y-5">
                           <div>
                             <label htmlFor="email" className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-800 dark:text-slate-300">
-                              Admin ID
+                              Admin Email
                             </label>
                             <div className="relative">
                               <Mail className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
@@ -132,7 +146,7 @@ export default function AdminLogin() {
                                 onChange={(e) => setEmail(e.target.value)}
                                 disabled={isLoading}
                                 required 
-                                placeholder="Enter admin ID"
+                                placeholder="Enter admin email"
                                 className="h-12 w-full rounded-xl border border-slate-300 bg-slate-50 pl-12 pr-4 text-sm text-slate-900 transition-all placeholder:text-slate-400 focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-600/20 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:border-blue-500" 
                               />
                             </div>
@@ -182,6 +196,16 @@ export default function AdminLogin() {
                             )}
                           </button>
                         </form>
+
+                        <p className="mt-8 text-center text-sm text-slate-500">
+                          Don't have an admin account?{' '}
+                          <button 
+                            onClick={() => navigate('/signup')} 
+                            className="font-medium text-blue-600 hover:text-blue-700"
+                          >
+                            Sign up
+                          </button>
+                        </p>
                       </div>
                     </div>
                   </div>

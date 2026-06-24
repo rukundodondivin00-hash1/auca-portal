@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { Loader2, Trash2, Calendar, BookOpen, XCircle } from 'lucide-react';
+import { Loader2, Trash2, Calendar, BookOpen, XCircle, PlayCircle, PauseCircle, RefreshCw } from 'lucide-react';
+import { imsApi } from '@/lib/api';
 
 const PREDEFINED_COURSES = [
   { code: 'ACCT 112', name: 'Principles of Accounting I' },
@@ -36,50 +37,96 @@ const PREDEFINED_COURSES = [
 
 const PREDEFINED_TERMS = ['2025/1', '2025/2', '2026/1', '2026/2', '2026/3', '2026/4'];
 
-export default function AdminAcademic() {
-  // Step 1: Term Selection State
-  const [selectedTermInput, setSelectedTermInput] = useState('');
-  const [managedTerm, setManagedTerm] = useState(''); // The term currently active on the screen
 
-  // Step 2: Course Management State
+export default function AdminAcademic() {
+  const [selectedTermInput, setSelectedTermInput] = useState(PREDEFINED_TERMS[0]);
+  const [managedTerm, setManagedTerm] = useState('');
+  const [registrationOpen, setRegistrationOpen] = useState(false);
+  const [togglingRegistration, setTogglingRegistration] = useState(false);
+
   const [courseForm, setCourseForm] = useState({ courseCode: '', courseName: '', credits: '' });
   const [registeredCourses, setRegisteredCourses] = useState<any[]>([]);
   const [addingCourse, setAddingCourse] = useState(false);
   const [loadingCourses, setLoadingCourses] = useState(false);
 
-  // Load existing courses when a term is selected
-  const startManagingTerm = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedTermInput) return;
-    
-    setManagedTerm(selectedTermInput);
+  // Load existing courses for the managed term
+  const fetchCoursesForTerm = async (termId: string) => {
     setLoadingCourses(true);
-
     try {
-      // First, activate the term on the backend so the database knows it's the current one
-      await fetch(`http://localhost:8080/api/v1/admin/academic/terms/${selectedTermInput}/activate`, {
-        method: 'PUT'
-      });
-
-      // Fetch the courses available for this newly activated term
-      const res = await fetch('http://localhost:8080/api/v1/registration/available-courses');
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data)) {
-          // Filter to only show courses belonging to the term we are managing
-          setRegisteredCourses(data.filter((c: any) => c.termId === selectedTermInput));
-        }
-      }
+      const res = await imsApi.get(`/api/v1/admin/academic/courses?termId=${encodeURIComponent(termId)}`);
+      setRegisteredCourses(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
-      console.error("Could not load initial courses:", err);
+      console.error('Could not load courses:', err);
     } finally {
       setLoadingCourses(false);
     }
   };
 
-  // Close/Terminate the currently managed term
-  const closeManagedTerm = () => {
+  // On mount, check if there's already an active managed term
+  useEffect(() => {
+    const checkActiveTerm = async () => {
+      try {
+        const res = await imsApi.get('/api/v1/admin/academic/terms/active');
+        if (res.data && res.data.active) {
+          setManagedTerm(res.data.termId);
+          setSelectedTermInput(res.data.termId);
+          setRegistrationOpen(res.data.registrationOpen);
+          fetchCoursesForTerm(res.data.termId);
+        }
+      } catch (err) {
+        // 404 or no active term, do nothing
+      }
+    };
+    checkActiveTerm();
+  }, []);
+
+  // Admin selects a term to start managing it (does NOT open registration)
+  const startManagingTerm = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTermInput) return;
+
+    setLoadingCourses(true);
+    try {
+      const res = await imsApi.put(`/api/v1/admin/academic/terms/activate?termId=${encodeURIComponent(selectedTermInput)}`);
+      setManagedTerm(selectedTermInput);
+      setRegistrationOpen(res.data?.registrationOpen ?? false);
+      await fetchCoursesForTerm(selectedTermInput);
+    } catch (err) {
+      console.error('Could not activate term:', err);
+    } finally {
+      setLoadingCourses(false);
+    }
+  };
+
+  // Toggle registration open/closed for students
+  const toggleRegistration = async () => {
+    setTogglingRegistration(true);
+    try {
+      if (registrationOpen) {
+        // Close registration
+        await imsApi.put(`/api/v1/admin/academic/terms/close-registration`);
+        setRegistrationOpen(false);
+      } else {
+        // Open registration
+        await imsApi.put(`/api/v1/admin/academic/terms/open-registration?termId=${encodeURIComponent(managedTerm)}`);
+        setRegistrationOpen(true);
+      }
+    } catch (err) {
+      console.error('Failed to toggle registration:', err);
+    } finally {
+      setTogglingRegistration(false);
+    }
+  };
+
+  // Close/exit the currently managed term
+  const closeManagedTerm = async () => {
+    try {
+      await imsApi.put(`/api/v1/admin/academic/terms/deactivate-all`);
+    } catch (err) {
+      console.error('Failed to deactivate terms:', err);
+    }
     setManagedTerm('');
+    setRegistrationOpen(false);
     setRegisteredCourses([]);
     setSelectedTermInput('');
   };
@@ -87,26 +134,17 @@ export default function AdminAcademic() {
   const handleAddCourse = async (e: React.FormEvent) => {
     e.preventDefault();
     setAddingCourse(true);
-    
+
     try {
-      const response = await fetch('http://localhost:8080/api/v1/admin/academic/courses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          courseCode: courseForm.courseCode,
-          courseName: courseForm.courseName,
-          credits: Number(courseForm.credits),
-          termId: managedTerm // Automatically assign to the managed term!
-        })
+      const response = await imsApi.post(`/api/v1/admin/academic/courses`, {
+        courseCode: courseForm.courseCode,
+        courseName: courseForm.courseName,
+        credits: Number(courseForm.credits),
+        termId: managedTerm
       });
-      
-      if (response.ok) {
-        const savedCourse = await response.json();
-        setRegisteredCourses(prev => [...prev, savedCourse]);
-        setCourseForm({ courseCode: '', courseName: '', credits: '' }); 
-      } else {
-        throw new Error("Failed to save");
-      }
+
+      setRegisteredCourses(prev => [...prev, response.data]);
+      setCourseForm({ courseCode: '', courseName: '', credits: '' });
     } catch (error) {
       console.error('Error adding course:', error);
       alert('Failed to save course to database.');
@@ -116,23 +154,14 @@ export default function AdminAcademic() {
   };
 
   const handleDeleteCourse = async (courseId: number) => {
-    if (!window.confirm("Are you sure you want to remove this course?")) return;
-
-    // Optimistically remove from UI
+    if (!window.confirm('Are you sure you want to remove this course?')) return;
     setRegisteredCourses(prev => prev.filter(c => c.id !== courseId));
 
     try {
-      // DELETE mapping. Requires @DeleteMapping("/courses/{id}") in your AdminAcademicController
-      const response = await fetch(`http://localhost:8080/api/v1/admin/academic/courses/${courseId}`, {
-        method: 'DELETE'
-      });
-
-      if (!response.ok) {
-        throw new Error("Deletion failed on server");
-      }
+      await imsApi.delete(`/api/v1/admin/academic/courses/${courseId}`);
     } catch (error) {
       console.error('Error deleting course:', error);
-      alert('Failed to delete course from database. Please check your backend endpoints.');
+      alert('Failed to delete course from database.');
     }
   };
 
@@ -170,44 +199,83 @@ export default function AdminAcademic() {
           </CardHeader>
           <CardContent>
             <form onSubmit={startManagingTerm} className="space-y-4">
-              <select 
-                value={selectedTermInput} 
-                onChange={(e) => setSelectedTermInput(e.target.value)} 
-                className="w-full p-2.5 border rounded-md border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none bg-white" 
+              <select
+                value={selectedTermInput}
+                onChange={(e) => setSelectedTermInput(e.target.value)}
+                className="w-full p-2.5 border rounded-md border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
                 required
               >
                 <option value="" disabled>Select Term...</option>
                 {PREDEFINED_TERMS.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
-              <button 
-                type="submit" 
-                disabled={!selectedTermInput} 
-                className="w-full bg-blue-600 hover:bg-blue-700 transition-colors text-white py-2.5 rounded-md font-semibold disabled:opacity-50"
+              <button
+                type="submit"
+                disabled={!selectedTermInput || loadingCourses}
+                className="w-full bg-blue-600 hover:bg-blue-700 transition-colors text-white py-2.5 rounded-md font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                Start Setup
+                {loadingCourses ? <><Loader2 className="animate-spin" size={16} /> Loading...</> : 'Start Setup'}
               </button>
             </form>
           </CardContent>
         </Card>
       ) : (
-        
-        /* STEP 2: Manage the Selected Term (Visible once a term is selected) */
+        /* STEP 2: Manage the Selected Term */
         <div className="space-y-6">
-          <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 flex justify-between items-center shadow-sm">
+          {/* Term Header Banner */}
+          <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 flex flex-wrap gap-3 justify-between items-center shadow-sm">
             <div>
               <span className="text-blue-600 font-bold tracking-wider text-sm">CURRENTLY MANAGING TERM</span>
               <h2 className="text-2xl font-black text-blue-900">{managedTerm}</h2>
             </div>
-            <button 
-              onClick={closeManagedTerm}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 font-medium hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all shadow-sm"
-            >
-              <XCircle size={18} /> Close Term
-            </button>
+            <div className="flex items-center gap-3">
+              {/* Registration Open/Close Toggle */}
+              <button
+                onClick={toggleRegistration}
+                disabled={togglingRegistration}
+                className={`flex items-center gap-2 px-4 py-2 rounded-md font-semibold text-sm transition-all shadow-sm disabled:opacity-50 ${
+                  registrationOpen
+                    ? 'bg-amber-50 border border-amber-300 text-amber-700 hover:bg-amber-100'
+                    : 'bg-green-600 text-white hover:bg-green-700'
+                }`}
+              >
+                {togglingRegistration ? (
+                  <><Loader2 className="animate-spin" size={16} /> Updating...</>
+                ) : registrationOpen ? (
+                  <><PauseCircle size={18} /> Close Registration</>
+                ) : (
+                  <><PlayCircle size={18} /> Open Registration</>
+                )}
+              </button>
+
+              {/* Registration Status Badge */}
+              <span className={`px-3 py-1.5 rounded-full text-xs font-bold ${
+                registrationOpen
+                  ? 'bg-green-100 text-green-700 border border-green-200'
+                  : 'bg-gray-100 text-gray-500 border border-gray-200'
+              }`}>
+                {registrationOpen ? '● Registration Open' : '○ Registration Closed'}
+              </span>
+
+              {/* Exit Term Management */}
+              <button
+                onClick={closeManagedTerm}
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 font-medium hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all shadow-sm"
+              >
+                <XCircle size={18} /> Close Term
+              </button>
+            </div>
           </div>
 
+          {/* Registration open banner */}
+          {registrationOpen && (
+            <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-green-800 text-sm font-medium flex items-center gap-2">
+              <PlayCircle size={16} className="text-green-600 shrink-0" />
+              Students can now see <strong>{managedTerm}</strong> courses and submit their course registration.
+            </div>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
+
             {/* Form to add courses */}
             <Card className="lg:col-span-1 border-t-4 border-t-emerald-500 shadow-sm h-fit">
               <CardHeader>
@@ -220,31 +288,58 @@ export default function AdminAcademic() {
                 <form onSubmit={handleAddCourse} className="space-y-4">
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 mb-1">Select Course</label>
-                    <select onChange={handleCourseSelection} value={courseForm.courseCode} className="w-full p-2.5 border rounded-md border-gray-300 text-sm outline-none focus:ring-2 focus:ring-emerald-500 bg-white" required>
+                    <select
+                      onChange={handleCourseSelection}
+                      value={courseForm.courseCode}
+                      className="w-full p-2.5 border rounded-md border-gray-300 text-sm outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                      required
+                    >
                       <option value="">Choose...</option>
                       {PREDEFINED_COURSES.map(c => <option key={c.code} value={c.code}>{c.code} - {c.name}</option>)}
                     </select>
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 mb-1">Credits (Max 4)</label>
-                    <input type="number" placeholder="Credits" value={courseForm.credits} onChange={e => setCourseForm({...courseForm, credits: e.target.value})} className="w-full p-2.5 border rounded-md border-gray-300 text-sm outline-none focus:ring-2 focus:ring-emerald-500" required min="1" max="4" />
+                    <input
+                      type="number"
+                      placeholder="Credits"
+                      value={courseForm.credits}
+                      onChange={e => setCourseForm({ ...courseForm, credits: e.target.value })}
+                      className="w-full p-2.5 border rounded-md border-gray-300 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                      required min="1" max="4"
+                    />
                   </div>
-                  <button type="submit" disabled={addingCourse} className="w-full bg-emerald-600 hover:bg-emerald-700 transition-colors text-white py-2.5 rounded-md font-semibold mt-2">
-                    {addingCourse ? <><Loader2 className="animate-spin inline mr-2" size={16}/> Saving...</> : "Add to Term"}
+                  <button
+                    type="submit"
+                    disabled={addingCourse}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 transition-colors text-white py-2.5 rounded-md font-semibold mt-2"
+                  >
+                    {addingCourse ? <><Loader2 className="animate-spin inline mr-2" size={16} />Saving...</> : 'Add to Term'}
                   </button>
                 </form>
               </CardContent>
             </Card>
-            
-            {/* List of existing courses for this term */}
+
+            {/* List of existing courses */}
             <Card className="lg:col-span-2 border-t-4 border-t-slate-800 shadow-sm">
               <CardHeader>
-                <CardTitle>Courses Assigned to {managedTerm}</CardTitle>
-                <CardDescription>Students will see these courses when registering for this term.</CardDescription>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <CardTitle>Courses Assigned to {managedTerm}</CardTitle>
+                    <CardDescription>Students will see these courses when registration is open.</CardDescription>
+                  </div>
+                  <button
+                    onClick={() => fetchCoursesForTerm(managedTerm)}
+                    className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-md transition-colors"
+                    title="Refresh courses"
+                  >
+                    <RefreshCw size={16} />
+                  </button>
+                </div>
               </CardHeader>
               <CardContent>
                 {loadingCourses ? (
-                  <div className="py-8 text-center text-slate-500"><Loader2 className="animate-spin inline" size={24}/></div>
+                  <div className="py-8 text-center text-slate-500"><Loader2 className="animate-spin inline" size={24} /></div>
                 ) : registeredCourses.length === 0 ? (
                   <div className="py-10 text-center text-slate-500 bg-slate-50 rounded-lg border border-dashed border-slate-200">
                     <BookOpen size={32} className="mx-auto mb-2 opacity-20" />
@@ -258,7 +353,7 @@ export default function AdminAcademic() {
                           <th className="text-left p-3 font-semibold text-slate-600">Code</th>
                           <th className="text-left p-3 font-semibold text-slate-600">Course Name</th>
                           <th className="text-center p-3 font-semibold text-slate-600">Credits</th>
-                          <th className="text-right p-3 font-semibold text-slate-600">Calculated Fee</th>
+                          <th className="text-right p-3 font-semibold text-slate-600">Fee (RWF)</th>
                           <th className="text-center p-3 font-semibold text-slate-600 w-16">Action</th>
                         </tr>
                       </thead>
@@ -266,15 +361,13 @@ export default function AdminAcademic() {
                         {registeredCourses.map((c, idx) => {
                           const courseFee = c.fee || (c.credits * 21300);
                           return (
-                            <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                            <tr key={c.id ?? idx} className="hover:bg-slate-50 transition-colors">
                               <td className="p-3 font-bold text-slate-800">{c.courseCode}</td>
                               <td className="p-3 text-slate-600">{c.courseName}</td>
                               <td className="p-3 text-center font-medium">{c.credits}</td>
-                              <td className="p-3 text-right font-medium text-slate-800">
-                                {formatCurrency(courseFee)}
-                              </td>
+                              <td className="p-3 text-right font-medium text-slate-800">{formatCurrency(courseFee)}</td>
                               <td className="p-3 text-center">
-                                <button 
+                                <button
                                   onClick={() => handleDeleteCourse(c.id)}
                                   className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
                                   title="Delete Course"

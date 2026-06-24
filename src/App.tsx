@@ -1,4 +1,4 @@
-﻿import { Routes, Route, Navigate } from "react-router";
+import { Routes, Route, Navigate } from "react-router";
 import Sidebar from "./components/Sidebar";
 import AdminSidebar from "./components/admin/AdminSidebar";
 import Header from "./components/Header";
@@ -12,8 +12,10 @@ import ContractPage from "./components/ContractPage";
 import ContractDetails from "./components/ContractDetails";
 import MyTranscript from "./components/MyTranscript"; 
 import MyRegistration from "./components/MyRegistration"; 
+import MyBulletin from "./components/MyBulletin"; 
 import Login from "./components/authentication/Login"; 
-import AdminLogin from "./components/admin/AdminLogin";
+import Signup from "./components/authentication/Signup";
+import Settings from "./components/Settings";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminAcademic from "./pages/admin/AdminAcademic"; // <-- ADDED THIS IMPORT
 import AdminContracts from "./pages/admin/AdminContracts";
@@ -21,6 +23,7 @@ import AdminContractDetails from "./pages/admin/AdminContractDetails";
 import AdminStudents from "./pages/admin/AdminStudents";
 import AdminStudentDetails from "./pages/admin/AdminStudentDetails";
 import AdminPenalties from "./pages/admin/AdminPenalties";
+import AdminSettings from "./pages/admin/AdminSettings";
 import { Toaster } from "./components/ui/sonner";
 
 function AdminAuthWrapper({ children }: { children: React.ReactNode }) {
@@ -76,13 +79,15 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Navigate to={hasToken ? "/student-dashboard" : "/login"} replace />} />
       <Route path="/login" element={<Login />} />
-      <Route path="/admin/login" element={<AdminLogin />} />
+      <Route path="/signup" element={<Signup />} />
+      <Route path="/admin/login" element={<Navigate to="/login" replace />} />
 
       <Route path="/admin/*" element={
         <AdminAuthWrapper>
           <div className="flex h-screen bg-gray-50 overflow-hidden">
             <AdminSidebar />
             <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+              <Header />
               <main className="flex-1 overflow-auto">
                 <div className="p-4 lg:p-6 max-w-[1560px] mx-auto">
                   <Routes>
@@ -94,6 +99,7 @@ export default function App() {
                     <Route path="/students" element={<AdminStudents />} />
                     <Route path="/students/:studentId" element={<AdminStudentDetails />} />
                     <Route path="/penalties" element={<AdminPenalties />} />
+                    <Route path="/settings" element={<AdminSettings />} />
                   </Routes>
                 </div>
               </main>
@@ -123,18 +129,13 @@ export default function App() {
                     <Route path="/my-transcript" element={<MyTranscript />} />
                     <Route path="/my-registration" element={<MyRegistration />} />
                     
-                    <Route path="/my-bulletin" element={
-                      <div className="p-6 bg-white rounded-lg border shadow-sm">
-                        <h2 className="text-xl font-bold">Academic Bulletin</h2>
-                        <p className="text-gray-500 mt-2">This section allows you to view the detailed academic bulletin.</p>
-                      </div>
-                    } />
+                    <Route path="/my-bulletin" element={<MyBulletin />} />
                     
 <Route path="/contract" element={<ContractPage />} />
                      <Route path="/contract-details" element={<ContractDetails />} />
                      <Route path="/announcements" element={<div className="p-6 bg-white rounded-lg border shadow-sm"><h2 className="text-xl font-bold">Announcements</h2><p className="text-gray-500 mt-2">View important announcements from the university.</p></div>} />
                      <Route path="/chat" element={<div className="p-6 bg-white rounded-lg border shadow-sm"><h2 className="text-xl font-bold">Chat</h2><p className="text-gray-500 mt-2">Communicate with academic advisors and staff.</p></div>} />
-                     <Route path="/settings" element={<div className="p-6 bg-white rounded-lg border shadow-sm"><h2 className="text-xl font-bold">Settings</h2><p className="text-gray-500 mt-2">Manage your account preferences.</p></div>} />
+                     <Route path="/settings" element={<Settings />} />
                     
                   </Routes>
 

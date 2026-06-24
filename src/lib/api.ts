@@ -1,8 +1,8 @@
 import axios from 'axios';
 
-// Contract System Backend (Port 8083) - for contracts and payments
-const contractApi = axios.create({
-  baseURL: import.meta.env.VITE_CONTRACT_API_URL || 'http://localhost:8083',
+// Contract System Backend (Port 8088) - for contracts and payments
+export const contractApi = axios.create({
+  baseURL: import.meta.env.VITE_CONTRACT_API_URL || 'http://localhost:8088',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -17,9 +17,9 @@ contractApi.interceptors.request.use((config) => {
   return config;
 });
 
-// IMS Registration Backend (Port 8080) - for registration, auth, courses
-const imsApi = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080',
+// IMS Registration Backend (Port 8085) - for registration, auth, courses
+export const imsApi = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8085',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -67,7 +67,12 @@ export interface Installment {
 
 export interface Penalty {
   id: string;
-  amount: number;
+  installmentId?: string;
+  contractId?: string;
+  studentName?: string;
+  previousAmount?: number;
+  penaltyAmount?: number;
+  newAmount?: number;
   reason: string;
   createdAt: string;
 }
@@ -111,20 +116,22 @@ export interface ContractStatusUpdate {
 // API ENDPOINTS
 // ==========================================
 
-// Auth - IMS Backend
+// Auth - IMS API
 export const authApi = {
-  login: (credentials: any) => imsApi.post('/api/auth/login', credentials),
+  login: (credentials: any) => imsApi.post('/api/v1/common/auth/signin', credentials),
+  signup: (userData: any) => imsApi.post('/api/v1/common/auth/signup', userData),
 };
 
 export const adminAuthApi = {
-  login: (credentials: any) => contractApi.post('/api/admin/login', credentials),
+  login: (credentials: any) => imsApi.post('/api/v1/common/auth/signin', credentials),
+  signup: (userData: any) => imsApi.post('/api/v1/common/auth/signup', userData),
 };
 
 // Student Dashboard - IMS Backend with X-Student-Id header
 export const studentApi = {
   getDashboard: () => {
     const studentId = localStorage.getItem('student_id') || '';
-    return imsApi.get('/api/auth/login', {
+    return imsApi.get('/api/v1/common/student/dashboard', {
       headers: { 'X-Student-Id': studentId }
     });
   },
@@ -134,21 +141,17 @@ export const studentApi = {
 
 // Finance - IMS Backend
 export const paymentApi = {
-  getMyBalance: (studentId: string) => 
-    imsApi.get('/api/v1/finance/student-payments/my-balance', {
-      headers: { 'X-Student-Id': studentId }
-    }),
-  processPayment: (studentId: string, data: { amount: number; transactionId?: string }) => 
-    imsApi.post('/api/v1/finance/student-payments/pay', data, {
-      headers: { 'X-Student-Id': studentId }
-    }),
+  getMyBalance: (studentId: string) =>
+    contractApi.get('/api/payments/my-balance'),
+  processPayment: (studentId: string, data: { amount: number; transactionId?: string }) =>
+    contractApi.post('/api/payments/confirm', data),
 };
 
 // Registration - IMS Backend
 export const registrationApi = {
   getTerm: () => imsApi.get<Term>('/api/v1/registration/term'),
   getAvailableCourses: () => imsApi.get<Course[]>('/api/v1/registration/available-courses'),
-  submitRegistration: (studentId: string, courseIds: number[]) => 
+  submitRegistration: (studentId: string, courseIds: number[]) =>
     imsApi.post('/api/v1/registration/submit', courseIds, {
       headers: { 'X-Student-Id': studentId }
     }),

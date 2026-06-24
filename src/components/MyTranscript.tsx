@@ -3,6 +3,7 @@ import {
   TrendingUp, Award, BookOpen, CircleCheck, 
   SlidersHorizontal, Calendar 
 } from 'lucide-react';
+import aucaLogo from '@/images/AUCA-logo.png';
 
 // --- TYPE DEFINITIONS ---
 interface Course {
@@ -120,7 +121,7 @@ export default function MyTranscript() {
           <div className="flex items-center gap-3 min-w-0">
             <div className="relative w-10 h-10 sm:w-12 sm:h-12 shrink-0">
               <img 
-                src="https://upload.wikimedia.org/wikipedia/en/thumb/2/2d/Adventist_University_of_Central_Africa_logo.png/220px-Adventist_University_of_Central_Africa_logo.png" 
+                src={aucaLogo} 
                 alt="AUCA Logo" 
                 className="object-contain w-full h-full"
               />
@@ -141,8 +142,8 @@ export default function MyTranscript() {
         
         <div className="grid divide-y divide-gray-100 dark:divide-slate-800/60 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
           <dl className="space-y-2 px-5 py-4 sm:px-6">
-            <div className="flex items-baseline gap-2"><dt className="w-[90px] shrink-0 text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-slate-500">Reg. Number</dt><dd className="min-w-0 text-sm font-medium text-gray-800 dark:text-slate-100">25306</dd></div>
-            <div className="flex items-baseline gap-2"><dt className="w-[90px] shrink-0 text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-slate-500">Full Name</dt><dd className="min-w-0 text-sm font-medium text-gray-800 dark:text-slate-100">Musengimana Fabrice</dd></div>
+            <div className="flex items-baseline gap-2"><dt className="w-[90px] shrink-0 text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-slate-500">Reg. Number</dt><dd className="min-w-0 text-sm font-medium text-gray-800 dark:text-slate-100">{localStorage.getItem('student_id') || '25306'}</dd></div>
+            <div className="flex items-baseline gap-2"><dt className="w-[90px] shrink-0 text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-slate-500">Full Name</dt><dd className="min-w-0 text-sm font-medium text-gray-800 dark:text-slate-100">{localStorage.getItem('student_name') || 'Student Name'}</dd></div>
             <div className="flex items-baseline gap-2"><dt className="w-[90px] shrink-0 text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-slate-500">Programme</dt><dd className="min-w-0 text-sm font-medium text-gray-800 dark:text-slate-100">DAY</dd></div>
           </dl>
           <dl className="space-y-2 px-5 py-4 sm:px-6">

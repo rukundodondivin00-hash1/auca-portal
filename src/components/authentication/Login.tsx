@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
-import { authApi } from '@/lib/api';
+import { Link, useNavigate, useLocation } from 'react-router';
+import { authApi, adminAuthApi } from '@/lib/api';
+import { Building, GraduationCap, CheckCircle2, AlertCircle, Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, ChevronRight } from 'lucide-react';
+import aucaLogo from '@/images/AUCA-logo.png';
 
 interface LoginResponse {
   username: string;
@@ -18,37 +19,58 @@ const generateMockToken = (username: string, role: string) => {
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState<'STUDENT' | 'ADMIN'>('STUDENT');
   const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(location.state?.message || null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError(null);
 
     try {
-      const response = await authApi.login({
-        username: email, 
-        password: password
-      });
+      let response;
+      if (role === 'STUDENT') {
+        response = await authApi.login({
+          username: email, 
+          password: password
+        });
+      } else {
+        response = await adminAuthApi.login({
+          username: email, 
+          password: password
+        });
+      }
 
-      const data: LoginResponse = response.data?.data || response.data || {};
-      const role = data?.role;
+      const data: any = response.data?.data || response.data || {};
+      const returnedRole = data?.role;
+      const token = data?.token;
 
-      if (role) {
-        const token = generateMockToken(email, role);
-        localStorage.setItem('jwt_token', token);
-        const normalizedRole = role === 'STUDENT' ? 'ROLE_STUDENT' : role;
-        localStorage.setItem('user_role', normalizedRole);
+      if (role === 'STUDENT' && returnedRole) {
+        const mockToken = generateMockToken(email, returnedRole);
+        localStorage.setItem('jwt_token', mockToken);
+        localStorage.setItem('user_role', returnedRole === 'STUDENT' ? 'ROLE_STUDENT' : returnedRole);
         if (data.username) localStorage.setItem('student_id', data.username);
         if (data.fullName) localStorage.setItem('student_name', data.fullName);
-        navigate(normalizedRole === 'ROLE_ADMIN' ? '/admin/dashboard' : '/student-dashboard');
+        navigate('/student-dashboard');
+      } else if (role === 'ADMIN' && returnedRole) {
+        const mockToken = token || generateMockToken(email, returnedRole);
+        localStorage.setItem('jwt_token', mockToken);
+        const normalizedRole = returnedRole === 'STUDENT' ? 'ROLE_STUDENT' : returnedRole;
+        localStorage.setItem('user_role', normalizedRole);
+        if (data.adminName) localStorage.setItem('admin_name', data.adminName);
+        else if (data.fullName) localStorage.setItem('admin_name', data.fullName);
+        navigate('/admin/dashboard');
       } else {
         throw new Error("Invalid response from server");
       }
     } catch (error: any) {
-      alert('Invalid credentials. Please check your ID and password.');
+      setError(`Invalid ${role.toLowerCase()} credentials. Please check your ${role === 'STUDENT' ? 'ID' : 'email'} and password.`);
     } finally {
       setIsLoading(false);
     }
@@ -76,7 +98,7 @@ export default function Login() {
                     <img 
                       alt="AUCA logo" 
                       className="object-contain w-full h-full" 
-                      src="https://upload.wikimedia.org/wikipedia/en/thumb/2/2d/Adventist_University_of_Central_Africa_logo.png/220px-Adventist_University_of_Central_Africa_logo.png" 
+                      src={aucaLogo} 
                     />
                   </div>
                   <div className="mt-6 space-y-1">
@@ -99,23 +121,60 @@ export default function Login() {
                           <img 
                             alt="logo" 
                             className="object-contain w-full h-full" 
-                            src="https://upload.wikimedia.org/wikipedia/en/thumb/2/2d/Adventist_University_of_Central_Africa_logo.png/220px-Adventist_University_of_Central_Africa_logo.png" 
+                            src={aucaLogo} 
                           />
                         </div>
                       </div>
 
                       <div className="mx-auto w-full max-w-[400px]">
                         <div className="mb-6 text-center">
-                          <h2 className="mb-2 text-3xl font-bold text-slate-900 dark:text-slate-100">Sign In</h2>
-                          <p className="text-sm text-slate-500 dark:text-slate-400">Access your academic portal</p>
+                          <h2 className="text-3xl font-bold text-slate-900 mb-2">Welcome Back</h2>
+                          <p className="text-sm text-slate-500 dark:text-slate-400">Log in to your AUCA Portal</p>
                         </div>
+
+                        <div className="flex p-1 bg-slate-100 rounded-xl mb-6">
+                          <button
+                            type="button"
+                            onClick={() => setRole('STUDENT')}
+                            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${
+                              role === 'STUDENT' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                            }`}
+                          >
+                            <GraduationCap className="w-4 h-4" />
+                            Student
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setRole('ADMIN')}
+                            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${
+                              role === 'ADMIN' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                            }`}
+                          >
+                            <Building className="w-4 h-4" />
+                            Admin
+                          </button>
+                        </div>
+
+                        {message && (
+                          <div className="mb-6 p-4 bg-green-50 border border-green-200 text-green-700 rounded-xl text-sm flex items-start gap-3">
+                            <div className="mt-0.5"><CheckCircle2 className="w-4 h-4 text-green-600" /></div>
+                            {message}
+                          </div>
+                        )}
+
+                        {error && (
+                          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm flex items-start gap-3">
+                            <div className="mt-0.5"><AlertCircle className="w-4 h-4 text-red-600" /></div>
+                            {error}
+                          </div>
+                        )}
                         
                         <div className="mb-6 h-px bg-slate-200/80 dark:bg-slate-800/80"></div>
                         
                         <form onSubmit={handleLogin} className="space-y-5">
                           <div>
                             <label htmlFor="email" className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-800 dark:text-slate-300">
-                              ID or Email
+                              {role === 'STUDENT' ? 'Student ID' : 'Admin Username or Email'}
                             </label>
                             <div className="relative">
                               <Mail className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
@@ -126,7 +185,7 @@ export default function Login() {
                                 onChange={(e) => setEmail(e.target.value)}
                                 disabled={isLoading}
                                 required 
-                                placeholder="Enter your ID or email"
+                                placeholder={role === 'STUDENT' ? "Enter your student ID" : "Enter admin username or email"}
                                 className="h-12 w-full rounded-xl border border-slate-300 bg-slate-50 pl-12 pr-4 text-sm text-slate-900 transition-all placeholder:text-slate-400 focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-600/20 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:border-blue-500" 
                               />
                             </div>
@@ -168,27 +227,24 @@ export default function Login() {
                           <button 
                             type="submit" 
                             disabled={isLoading}
-                            className="group mt-2 w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-700 to-blue-600 px-4 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition-all hover:from-blue-600 hover:to-blue-500 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+                            className={`w-full py-3.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium text-sm flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-500/25 ${
+                              isLoading ? 'opacity-75 cursor-not-allowed' : ''
+                            }`}
                           >
-                            {isLoading ? (
-                              <>
-                                <Loader2 className="h-5 w-5 animate-spin" /> Authenticating...
-                              </>
-                            ) : (
-                              <>
-                                Sign In
-                                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                              </>
-                            )}
+                            {isLoading ? 'Authenticating...' : 'Sign In'}
+                            {!isLoading && <ChevronRight className="w-4 h-4" />}
                           </button>
-
-                          <p className="pt-4 text-center text-sm text-slate-600 dark:text-slate-400">
-                            New here?{' '}
-                            <Link to="/register" className="font-semibold text-blue-600 hover:text-blue-700 hover:underline dark:text-blue-400 dark:hover:text-blue-300">
-                              Create an account
-                            </Link>
-                          </p>
                         </form>
+
+                        <p className="mt-8 text-center text-sm text-slate-500">
+                          Don't have an account?{' '}
+                          <button 
+                            onClick={() => navigate('/signup')} 
+                            className="font-medium text-blue-600 hover:text-blue-700"
+                          >
+                            Sign up
+                          </button>
+                        </p>
                       </div>
                     </div>
                   </div>

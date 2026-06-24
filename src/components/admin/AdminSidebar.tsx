@@ -1,14 +1,24 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 import { 
   Pin, LayoutDashboard, FileSignature, Users, 
   History, Settings, LogOut, GraduationCap, BookOpen 
 } from 'lucide-react';
+import aucaLogo from '@/images/AUCA-logo.png';
 
 export default function AdminSidebar() {
   const [isPinned, setIsPinned] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.removeItem('jwt_token');
+    localStorage.removeItem('user_role');
+    localStorage.removeItem('admin_name');
+    sessionStorage.clear();
+    navigate('/admin/login');
+  };
 
   const isExpanded = isPinned || isHovered;
 
@@ -20,8 +30,8 @@ export default function AdminSidebar() {
     >
       <div className="flex items-center justify-between p-4 h-16 shrink-0">
         <Link to="/admin/dashboard" className="flex items-center gap-3 overflow-hidden whitespace-nowrap">
-          <div className="text-blue-900 bg-blue-100 p-1.5 rounded-full min-w-[32px] flex items-center justify-center">
-            <GraduationCap size={20} />
+          <div className="flex items-center justify-center h-8 w-8 min-w-[32px]">
+            <img src={aucaLogo} alt="AUCA Logo" className="object-contain w-full h-full" />
           </div>
           <div className={`font-bold text-xs text-blue-900 leading-tight transition-opacity duration-300 ${isExpanded ? 'opacity-100' : 'opacity-0'}`}>
             AUCA ADMIN<br/>PORTAL
@@ -92,13 +102,10 @@ export default function AdminSidebar() {
           isActive={location.pathname === '/admin/settings'} 
           isExpanded={isExpanded} 
         />
-        <NavItem 
-          icon={<LogOut size={20} />} 
-          label="Logout" 
-          href="/login" 
-          isActive={false} 
-          isExpanded={isExpanded} 
-        />
+        <button onClick={handleLogout} className={`flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors whitespace-nowrap text-gray-600 hover:bg-gray-100 hover:text-gray-900 w-full`}>
+          <span className="min-w-[20px] shrink-0"><LogOut size={20} /></span>
+          <span className={`text-sm transition-opacity duration-300 ${isExpanded ? 'opacity-100' : 'opacity-0 hidden'}`}>Logout</span>
+        </button>
       </div>
     </aside>
   );
@@ -109,7 +116,7 @@ function NavItem({ icon, label, href = "#", isActive = false, isExpanded }: {
   label: string, 
   href?: string, 
   isActive?: boolean, 
-  isExpanded: boolean 
+  isExpanded: boolean
 }) {
   return (
     <li>

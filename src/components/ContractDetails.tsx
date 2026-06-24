@@ -1,22 +1,30 @@
 import { useState, useEffect } from 'react';
 import { FileText, CheckCircle2, TrendingUp, CalendarClock, Loader2, Check } from 'lucide-react';
-import { studentApi } from '@/lib/api';
+import { studentApi, paymentApi } from '@/lib/api';
 
 export default function ContractDetails() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchData = () => {
-    studentApi.getMyContracts()
-      .then(res => {
-        const contracts: any[] = res.data.data;
-        const contract = contracts && contracts.length > 0 ? contracts[0] : null;
-        setData(contract ? { contract } : null);
-      })
-      .catch(() => {
-        setData(null);
-      })
-      .finally(() => setLoading(false));
+  const fetchData = async () => {
+    try {
+      const studentId = localStorage.getItem('student_id') || '25306';
+      
+      const [contractRes, balRes] = await Promise.all([
+        studentApi.getMyContracts().catch(() => ({ data: { data: [] } })),
+        paymentApi.getMyBalance(studentId).catch(() => ({ data: { data: { totalPaid: 0 } } }))
+      ]);
+
+      const contracts: any[] = contractRes.data?.data || [];
+      const contract = contracts.length > 0 ? contracts[0] : null;
+      const prePaid = Number(balRes.data?.data?.totalPaid || balRes.data?.totalPaid || 0);
+
+      setData(contract ? { contract, prePaid } : null);
+    } catch {
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -41,10 +49,10 @@ export default function ContractDetails() {
   }
 
   const totalAmount = contract.totalFees || 0;
-  const initialPayment = contract.amountPaidAtSigning || 0;
+  const prePaidAmount = data?.prePaid || 0;
   const installmentPaid = contract.installments?.reduce((s: number, i: any) => s + (i.amountPaid || 0), 0) || 0;
-  const paymentMade = initialPayment + installmentPaid;
-  const progressPercentage = Math.min(Math.round((paymentMade / totalAmount) * 100), 100);
+  const paymentMade = prePaidAmount + installmentPaid;
+  const progressPercentage = totalAmount > 0 ? Math.min(Math.round((paymentMade / totalAmount) * 100), 100) : 0;
   const balance = totalAmount - paymentMade;
 
   const formatCurrency = (amount: number) => {
@@ -121,6 +129,7 @@ export default function ContractDetails() {
                   <th className="px-6 py-3 font-semibold uppercase">Deadline Date</th>
                   <th className="px-6 py-3 font-semibold uppercase text-right">Amount Due</th>
                   <th className="px-6 py-3 font-semibold uppercase text-right">Amount Paid</th>
+                  <th className="px-6 py-3 font-semibold uppercase text-right text-red-600">Penalty</th>
                   <th className="px-6 py-3 font-semibold uppercase text-center">Status</th>
                 </tr>
               </thead>
@@ -131,6 +140,9 @@ export default function ContractDetails() {
                     <td className="px-6 py-4 text-gray-600">{inst.deadlineDate}</td>
                     <td className="px-6 py-4 text-right font-bold">{Number(inst.amountDue || 0).toLocaleString()} RWF</td>
                     <td className="px-6 py-4 text-right">{Number(inst.amountPaid || 0).toLocaleString()} RWF</td>
+                    <td className="px-6 py-4 text-right font-bold text-red-600">
+                      {Number(inst.penaltyAmount || 0) > 0 ? `+${Number(inst.penaltyAmount).toLocaleString()} RWF` : '—'}
+                    </td>
                     <td className="px-6 py-4 text-center">
                       <span className={`px-2.5 py-1 text-xs font-bold rounded-full ${inst.status === 'PAID' ? 'bg-green-100 text-green-700' : inst.status === 'OVERDUE' ? 'bg-red-100 text-red-700' : inst.status === 'PARTIALLY_PAID' ? 'bg-yellow-100 text-yellow-700' : 'bg-amber-100 text-amber-700'}`}>
                         {inst.status}
