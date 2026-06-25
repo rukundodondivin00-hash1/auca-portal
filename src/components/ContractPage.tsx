@@ -180,6 +180,26 @@ export default function ContractPage() {
     );
   }
 
+  // ── Guard: Full fees paid ───────────────────────────────────────────────
+  if (paidAmount >= totalFees && totalFees > 0) {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center p-6">
+        <div className="bg-green-50 border border-green-200 p-8 rounded-xl shadow-sm text-center max-w-md">
+          <CheckCircle2 size={40} className="text-green-600 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-green-700">Congratulations!</h2>
+          <p className="mt-2 text-green-700 font-medium">You have fully paid your fees. You don't have to take a contract.</p>
+          <div className="mt-4 bg-white border border-green-200 rounded-lg p-4 text-sm text-left space-y-1">
+            <div className="flex justify-between"><span className="text-gray-600">Total Fees:</span><span className="font-bold">{formatCurrency(totalFees)}</span></div>
+            <div className="flex justify-between"><span className="text-gray-600">Amount Paid:</span><span className="font-bold text-green-600">{formatCurrency(paidAmount)}</span></div>
+          </div>
+          <Link to="/" className="mt-4 inline-block bg-[#00447b] text-white px-6 py-2 rounded-lg font-bold">
+            Back to Dashboard
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   // ── Guard: Contract already exists ───────────────────────────────────────
   if (existingContract) {
     return (
