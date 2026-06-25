@@ -34,7 +34,7 @@ export default function ContractDetails() {
   if (loading) return <div className="p-12 text-center"><Loader2 className="animate-spin mx-auto text-blue-900" size={32} /></div>;
 
   const contract: any = data?.contract || data;
-  const installments = contract?.installments || [];
+  const rawInstallments = contract?.installments || [];
 
   if (!contract || !contract.id) {
     return (
@@ -50,10 +50,43 @@ export default function ContractDetails() {
 
   const totalAmount = contract.totalFees || 0;
   const prePaidAmount = data?.prePaid || 0;
-  const installmentPaid = contract.installments?.reduce((s: number, i: any) => s + (i.amountPaid || 0), 0) || 0;
+  const installmentPaid = rawInstallments.reduce((s: number, i: any) => s + (i.amountPaid || 0), 0) || 0;
   const paymentMade = prePaidAmount + installmentPaid;
   const progressPercentage = totalAmount > 0 ? Math.min(Math.round((paymentMade / totalAmount) * 100), 100) : 0;
   const balance = totalAmount - paymentMade;
+
+  // Dynamically calculate installment status and amount paid
+  const totalInstallmentDue = rawInstallments.reduce((s: number, i: any) => s + (Number(i.amountDue) || 0), 0);
+  const upfrontRequired = Math.max(0, totalAmount - totalInstallmentDue);
+  
+  let remainingForInstallments = Math.max(0, paymentMade - upfrontRequired);
+
+  const installments = rawInstallments.map((inst: any) => {
+    const due = Number(inst.amountDue || 0);
+    let paid = 0;
+    let status = inst.status;
+
+    if (remainingForInstallments >= due && due > 0) {
+      paid = due;
+      remainingForInstallments -= due;
+      status = 'PAID';
+    } else if (remainingForInstallments > 0) {
+      paid = remainingForInstallments;
+      remainingForInstallments = 0;
+      status = 'PARTIALLY_PAID';
+    } else {
+      paid = 0;
+      if (status !== 'OVERDUE') {
+        status = 'PENDING';
+      }
+    }
+
+    return {
+      ...inst,
+      amountPaid: paid,
+      status: status
+    };
+  });
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-RW', { style: 'currency', currency: 'RWF' }).format(amount);

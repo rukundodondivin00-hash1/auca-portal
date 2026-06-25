@@ -13,6 +13,7 @@ export default function AdminContractDetails() {
   const navigate = useNavigate();
   const [contract, setContract] = useState<Contract | null>(null);
   const [installments, setInstallments] = useState<Installment[]>([]);
+  const [studentSummary, setStudentSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -28,6 +29,13 @@ export default function AdminContractDetails() {
       setContract(contractResponse.data);
       const installmentsResponse = await adminApi.getInstallmentsByContract(id!);
       setInstallments(installmentsResponse.data);
+
+      try {
+        const summaryResponse = await adminApi.getStudentSummary(contractResponse.data.studentId);
+        setStudentSummary(summaryResponse.data);
+      } catch (err) {
+        console.error('Failed to fetch student summary:', err);
+      }
     } catch (error) {
       console.error('Failed to fetch contract details:', error);
       // Demo data fallback
@@ -89,7 +97,43 @@ export default function AdminContractDetails() {
     );
   }
 
-  const totalPaid = contract.amountPaidAtSigning + contract.totalPaidOnInstallments;
+  // Use studentSummary.totalPaidAcrossContracts if available, otherwise fallback to contract data
+  const totalPaid = studentSummary?.totalPaidAcrossContracts ?? 
+    (contract.amountPaidAtSigning + contract.totalPaidOnInstallments);
+
+  // Dynamically calculate installment status and amount paid
+  const totalAmount = contract.totalFees || 0;
+  const totalInstallmentDue = installments.reduce((s: number, i: any) => s + (Number(i.amount) || 0), 0);
+  const upfrontRequired = Math.max(0, totalAmount - totalInstallmentDue);
+  
+  let remainingForInstallments = Math.max(0, totalPaid - upfrontRequired);
+
+  const dynamicInstallments = installments.map((inst: any) => {
+    const due = Number(inst.amount || 0);
+    let paid = 0;
+    let status = inst.status;
+
+    if (remainingForInstallments >= due && due > 0) {
+      paid = due;
+      remainingForInstallments -= due;
+      status = 'PAID';
+    } else if (remainingForInstallments > 0) {
+      paid = remainingForInstallments;
+      remainingForInstallments = 0;
+      status = 'PARTIALLY_PAID';
+    } else {
+      paid = 0;
+      if (status !== 'OVERDUE') {
+        status = 'PENDING';
+      }
+    }
+
+    return {
+      ...inst,
+      amountPaid: paid,
+      status: status
+    };
+  });
 
   return (
     <div className="p-6 space-y-6">
@@ -178,7 +222,7 @@ export default function AdminContractDetails() {
       <Card>
         <CardHeader>
           <CardTitle>Installment Plan</CardTitle>
-          <CardDescription>{installments.length} installment(s) scheduled</CardDescription>
+          <CardDescription>{dynamicInstallments.length} installment(s) scheduled</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
@@ -186,12 +230,13 @@ export default function AdminContractDetails() {
               <TableRow>
                 <TableHead>Due Date</TableHead>
                 <TableHead>Amount</TableHead>
+                <TableHead>Amount Paid</TableHead>
                 <TableHead>Penalty</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {installments.map((installment) => (
+              {dynamicInstallments.map((installment: any) => (
                 <TableRow key={installment.id}>
                   <TableCell>
                     <div className="flex items-center gap-2">
@@ -206,6 +251,12 @@ export default function AdminContractDetails() {
                     </div>
                   </TableCell>
                   <TableCell>
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="h-4 w-4 text-gray-400" />
+                      {formatCurrency(installment.amountPaid)}
+                    </div>
+                  </TableCell>
+                  <TableCell>
                     {installment.penaltyAmount > 0 ? (
                       <span className="text-red-600 font-medium">
                         {formatCurrency(installment.penaltyAmount)}
@@ -215,15 +266,19 @@ export default function AdminContractDetails() {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={installment.status === 'PAID' ? 'outline' : 'default'}>
+                    <Badge variant={installment.status === 'PAID' ? 'outline' : 'default'} className={
+                      installment.status === 'PAID' ? 'bg-green-100 text-green-700 hover:bg-green-100 border-green-200' :
+                      installment.status === 'OVERDUE' ? 'bg-red-100 text-red-700 hover:bg-red-100 border-red-200' :
+                      installment.status === 'PARTIALLY_PAID' ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-100 border-yellow-200' : ''
+                    }>
                       {installment.status}
                     </Badge>
                   </TableCell>
                 </TableRow>
               ))}
-              {installments.length === 0 && (
+              {dynamicInstallments.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8">
+                  <TableCell colSpan={5} className="text-center py-8">
                     No installments scheduled
                   </TableCell>
                 </TableRow>
@@ -232,6 +287,41 @@ export default function AdminContractDetails() {
           </Table>
         </CardContent>
       </Card>
+
+      {studentSummary?.transactions && studentSummary.transactions.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Payment History</CardTitle>
+            <CardDescription>{studentSummary.transactions.length} transaction(s) recorded</CardDescription>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Channel</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {studentSummary.transactions.map((tx: any) => (
+                  <TableRow key={tx.id}>
+                    <TableCell>{formatDate(tx.createdAt)}</TableCell>
+                    <TableCell className="font-bold text-green-600">
+                      +{formatCurrency(tx.amount)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{tx.feeType || 'N/A'}</Badge>
+                    </TableCell>
+                    <TableCell>{tx.channel || 'N/A'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
