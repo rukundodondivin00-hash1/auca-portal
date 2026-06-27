@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { AlertCircle, CheckCircle2, Loader2, AlertTriangle, FileSignature } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
-import { studentApi, imsApi, paymentApi } from '@/lib/api';
+import { imsApi, studentApi, paymentApi, registrationApi } from '@/lib/api';
 
 export default function ContractPage() {
   const [loading, setLoading] = useState(true);
   const [registration, setRegistration] = useState<any>(null);
+  const [externalFeesData, setExternalFeesData] = useState<any>(null);
   const [existingContract, setExistingContract] = useState<any>(null);
   const [paidAmount, setPaidAmount] = useState(0);
   const navigate = useNavigate();
@@ -23,11 +24,26 @@ export default function ContractPage() {
       setLoading(true);
       try {
         // 1. Get student registration from IMS
-        const regRes = await imsApi.get('/api/v1/registration/my-registration', {
-          headers: { 'X-Student-Id': studentId }
-        });
-        if (regRes.status === 200 && regRes.data) {
-          setRegistration(regRes.data);
+        try {
+          const termRes = await registrationApi.getTerm();
+          if (termRes.data && termRes.data.id) {
+            const regRes = await registrationApi.getMyRegistration(studentId, termRes.data.id);
+            if (regRes.status === 200 && regRes.data) {
+              setRegistration(regRes.data);
+            }
+          }
+        } catch (err) {
+          // Fallback if 500 error
+        }
+
+        // 1b. Get total fees from Finance API
+        try {
+          const feesRes = await paymentApi.getStudentFees(studentId);
+          if (feesRes.data?.data && feesRes.data.data.length > 0) {
+            setExternalFeesData(feesRes.data.data[0]);
+          }
+        } catch (err) {
+          console.error("Could not fetch external fees", err);
         }
 
         // 2. Check if contract already exists + get paid amount
@@ -57,13 +73,13 @@ export default function ContractPage() {
   }, [studentId]);
 
   // Derive semester from termId e.g. "2025/1" → semester=1, year=2025
-  const termId: string = registration?.termId || '';
+  const termId: string = externalFeesData?.termId || registration?.termId || '';
   const termParts = termId ? termId.split('/').map(Number) : [0, 0];
   const termYear: number = termParts[0] || new Date().getFullYear();
   const semester: number = termParts[1] || 0;
 
   // Installment count by semester
-  const installmentCount = semester === 1 ? 2 : semester === 2 ? 3 : 0;
+  const installmentCount = semester === 1 ? 2 : semester === 2 ? 3 : 1;
 
   // Suggested deadlines
   const getSuggestedDeadlines = (): string[] => {
@@ -72,12 +88,14 @@ export default function ContractPage() {
     } else if (semester === 2) {
       const y = termYear + 1;
       return [`${y}-02-28`, `${y}-03-31`, `${y}-04-30`];
+    } else if (semester === 3) {
+      return [`${termYear}-07-31`];
     }
     return [];
   };
   const suggestedDeadlines = getSuggestedDeadlines();
 
-  const totalFees = registration?.totalFee || 0;
+  const totalFees = externalFeesData?.totalFee || registration?.totalFee || 0;
   const halfAmount = totalFees / 2;
   const isEligible = paidAmount >= halfAmount;
   const remainingBalance = totalFees - paidAmount;
@@ -363,7 +381,7 @@ export default function ContractPage() {
         <label className="flex gap-3 cursor-pointer">
           <input type="checkbox" checked={hasAccepted} onChange={(e) => setHasAccepted(e.target.checked)} className="w-5 h-5 mt-0.5 rounded" />
           <span className="text-sm text-gray-700">
-            I agree to the payment terms outlined in the official contract and understand that late payments may incur penalties.
+            I agree to the payment terms outlined in the official contract and understand that missing any installment deadline will incur a strict 5% penalty.
             I commit to paying the remaining balance of <strong>{formatCurrency(remainingBalance)}</strong> in {installmentCount} installments as specified above.
           </span>
         </label>

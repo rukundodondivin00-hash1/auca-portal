@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Wallet, FileText, DollarSign, Loader2, FileSignature } from 'lucide-react';
-import { studentApi, imsApi, paymentApi } from '@/lib/api';
+import { studentApi, imsApi, paymentApi, registrationApi } from '@/lib/api';
 import InitiatePaymentModal from './InitiatePaymentModal';
 import { Link } from 'react-router';
 
@@ -26,11 +26,12 @@ export default function MyFees() {
     }
 
     try {
-      const regRes = await imsApi.get('/api/v1/registration/my-registration', {
-        headers: { 'X-Student-Id': studentId }
-      });
-      if (regRes.status === 200 && regRes.data) {
-        setRegistration(regRes.data);
+      const termRes = await registrationApi.getTerm();
+      if (termRes.data && termRes.data.id) {
+        const regRes = await registrationApi.getMyRegistration(studentId, termRes.data.id);
+        if (regRes.status === 200 && regRes.data) {
+          setRegistration(regRes.data);
+        }
       }
     } catch {
       setRegistration(null);

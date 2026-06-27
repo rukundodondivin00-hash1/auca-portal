@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Info, CheckSquare, Square, Loader2, CheckCircle2, RefreshCw, FileText } from 'lucide-react';
 
-import { imsApi } from '@/lib/api';
+import { imsApi, registrationApi } from '@/lib/api';
 
 interface Course {
   id: number;
@@ -39,11 +39,17 @@ export default function MyRegistration() {
   const fetchRegistrationData = useCallback(async () => {
     setLoading(true);
     try {
-      // Check if student already has a registration
+      // 1. Get the active term first
+      const termRes = await imsApi.get('/api/v1/registration/term');
+      const term = termRes.data;
+
+      if (!term || !term.id) {
+        throw new Error("No active term found");
+      }
+
+      // 2. Check if student already has a registration for this term
       try {
-        const myRegResponse = await imsApi.get('/api/v1/registration/my-registration', {
-          headers: { 'X-Student-Id': studentId }
-        });
+        const myRegResponse = await registrationApi.getMyRegistration(studentId, term.id);
 
         if (myRegResponse.status === 200 && myRegResponse.data) {
           const myReg = myRegResponse.data;
@@ -52,33 +58,30 @@ export default function MyRegistration() {
             termId: myReg.termId,
             totalFee: myReg.totalFee,
             courses: myReg.courses || [],
-            status: myReg.status || 'REGISTERED'
+            status: myReg.validationStatus || myReg.status || 'REGISTERED'
           });
           setActiveTerm(null); // Hide the registration form
           return;
         }
       } catch (err: any) {
-        // If 404, it just means they haven't registered yet, continue to fetch term
+        // If 404, it just means they haven't registered yet, continue to fetch available courses
         if (err?.response?.status !== 404) {
           console.error("Error fetching my-registration:", err);
         }
       }
 
       // No existing registration — check if term is open for new registration
-      const termRes = await imsApi.get('/api/v1/registration/term');
-      if (termRes.status === 200 && termRes.data) {
-        setActiveTerm(termRes.data);
-        if (termRes.data.registrationOpen) {
-          const courseRes = await imsApi.get('/api/v1/registration/available-courses');
-          if (courseRes.status === 200 && Array.isArray(courseRes.data)) {
-            setCourses(courseRes.data.map((c: any) => ({
-              ...c,
-              fee: c.fee ?? (c.credits * 21300)
-            })));
-          }
-        }
+      setActiveTerm(term);
+      if (term.registrationOpen || term.preregistrationOpen) {
+        const courseRes = await registrationApi.getAvailableCourses();
+        const coursesList = Array.isArray(courseRes.data) ? courseRes.data : (courseRes.data?.content || []);
+        setCourses(coursesList.map((c: any) => ({
+          ...c,
+          fee: c.fee ?? (c.credits * 21300)
+        })));
       }
     } catch (error) {
+      console.error("Failed to load registration data:", error);
       setActiveTerm(null);
       setCourses([]);
     } finally {

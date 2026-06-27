@@ -48,14 +48,15 @@ export default function Login() {
       }
 
       const data: any = response.data?.data || response.data || {};
-      const returnedRole = data?.role;
+      const returnedRole = data?.role || role; // Fallback to requested role if API just returns 200 OK
       const token = data?.token;
 
       if (role === 'STUDENT' && returnedRole) {
-        const mockToken = generateMockToken(email, returnedRole);
+        const mockToken = token || generateMockToken(email, returnedRole);
         localStorage.setItem('jwt_token', mockToken);
         localStorage.setItem('user_role', returnedRole === 'STUDENT' ? 'ROLE_STUDENT' : returnedRole);
         if (data.username) localStorage.setItem('student_id', data.username);
+        else localStorage.setItem('student_id', email); // fallback
         if (data.fullName) localStorage.setItem('student_name', data.fullName);
         navigate('/student-dashboard');
       } else if (role === 'ADMIN' && returnedRole) {
@@ -235,16 +236,6 @@ export default function Login() {
                             {!isLoading && <ChevronRight className="w-4 h-4" />}
                           </button>
                         </form>
-
-                        <p className="mt-8 text-center text-sm text-slate-500">
-                          Don't have an account?{' '}
-                          <button 
-                            onClick={() => navigate('/signup')} 
-                            className="font-medium text-blue-600 hover:text-blue-700"
-                          >
-                            Sign up
-                          </button>
-                        </p>
                       </div>
                     </div>
                   </div>

@@ -34,7 +34,7 @@ export default function AdminSidebar() {
             <img src={aucaLogo} alt="AUCA Logo" className="object-contain w-full h-full" />
           </div>
           <div className={`font-bold text-xs text-blue-900 leading-tight transition-opacity duration-300 ${isExpanded ? 'opacity-100' : 'opacity-0'}`}>
-            AUCA ADMIN<br/>PORTAL
+            FINANCE ADMIN<br/>PORTAL
           </div>
         </Link>
         
@@ -59,14 +59,6 @@ export default function AdminSidebar() {
               label="Dashboard" 
               href="/admin/dashboard" 
               isActive={location.pathname === '/admin/dashboard'} 
-              isExpanded={isExpanded} 
-            />
-            {/* NEW ACADEMIC SETUP LINK */}
-            <NavItem 
-              icon={<BookOpen size={20} />} 
-              label="Academic Setup" 
-              href="/admin/academic" 
-              isActive={location.pathname === '/admin/academic'} 
               isExpanded={isExpanded} 
             />
             <NavItem 

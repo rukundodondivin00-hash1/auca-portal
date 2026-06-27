@@ -3,17 +3,35 @@ import { Search, House, ChevronRight, Bell, Calendar, ChevronDown, LogOut } from
 import { useNavigate, useLocation } from 'react-router';
 
 import { imsApi, registrationApi } from '@/lib/api';
+import SockJS from 'sockjs-client';
+import { Client } from '@stomp/stompjs';
 
+export interface NotificationMessage {
+  title: string;
+  message: string;
+  type: 'WARNING' | 'PENALTY' | 'INFO';
+  contractId: string;
+  studentId: string;
+  timestamp: string;
+}
 export default function Header() {
-  const [studentName, setStudentName] = useState('Student');
+  const userRole = localStorage.getItem('user_role');
+  const isAdmin = userRole === 'ROLE_ADMIN' || userRole === 'ADMIN';
+
+  const [studentName] = useState(() => {
+    if (isAdmin) {
+      return localStorage.getItem('admin_name') || 'Administrator';
+    }
+    return localStorage.getItem('student_name') || 'Student';
+  });
+  
   const [registeredTermId, setRegisteredTermId] = useState<string | null>(null);
   const [termOpen, setTermOpen] = useState<boolean | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationMessage[]>([]);
   const navigate = useNavigate();
   const location = useLocation();
-
-  const userRole = localStorage.getItem('user_role');
-  const isAdmin = userRole === 'ROLE_ADMIN' || userRole === 'ADMIN';
 
   const studentId = localStorage.getItem('student_id') || '25306';
 
@@ -37,14 +55,6 @@ export default function Header() {
   })();
 
   useEffect(() => {
-    if (isAdmin) {
-      const storedAdminName = localStorage.getItem('admin_name');
-      if (storedAdminName) setStudentName(storedAdminName);
-      else setStudentName('Administrator');
-    } else {
-      const storedName = localStorage.getItem('student_name');
-      if (storedName) setStudentName(storedName);
-    }
 
     const fetchHeaderData = async () => {
       if (isAdmin) return; // Admins don't need to fetch term data for themselves
@@ -70,7 +80,37 @@ export default function Header() {
     };
 
     fetchHeaderData();
-  }, [studentId]);
+  }, [studentId, isAdmin]);
+
+  useEffect(() => {
+    if (isAdmin || !studentId) return;
+
+    const contractApiUrl = import.meta.env.VITE_CONTRACT_API_URL || 'http://localhost:8088';
+    
+    const stompClient = new Client({
+      webSocketFactory: () => new SockJS(`${contractApiUrl}/ws/notifications`),
+      reconnectDelay: 5000,
+      onConnect: () => {
+        console.log('Connected to WebSocket notifications');
+        stompClient.subscribe(`/topic/notifications/${studentId}`, (msg) => {
+          if (msg.body) {
+            const newNotification: NotificationMessage = JSON.parse(msg.body);
+            setNotifications((prev) => [newNotification, ...prev]);
+          }
+        });
+      },
+      onStompError: (frame) => {
+        console.error('Broker reported error: ' + frame.headers['message']);
+        console.error('Additional details: ' + frame.body);
+      },
+    });
+
+    stompClient.activate();
+
+    return () => {
+      stompClient.deactivate();
+    };
+  }, [isAdmin, studentId]);
 
   const initials = studentName
     .split(' ')
@@ -140,9 +180,61 @@ export default function Header() {
           {!isAdmin && <div className="w-px h-7 bg-gray-200 hidden sm:block" />}
 
           {/* Notifications */}
-          <button className="relative p-1.5 rounded-lg text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700">
-            <Bell size={18} />
-          </button>
+          <div className="relative">
+            <button 
+              className="relative p-1.5 rounded-lg text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700"
+              onClick={() => {
+                setShowNotifications(!showNotifications);
+                setShowDropdown(false);
+              }}
+            >
+              <Bell size={18} />
+              {notifications.length > 0 && (
+                <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
+              )}
+            </button>
+
+            {showNotifications && (
+              <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-50 max-h-96 overflow-y-auto">
+                <div className="px-4 py-2 border-b border-gray-100 flex justify-between items-center">
+                  <p className="text-sm font-semibold text-gray-900">Notifications</p>
+                  {notifications.length > 0 && (
+                    <button 
+                      onClick={() => setNotifications([])}
+                      className="text-xs text-blue-600 hover:text-blue-800"
+                    >
+                      Clear all
+                    </button>
+                  )}
+                </div>
+                {notifications.length === 0 ? (
+                  <div className="px-4 py-6 text-center text-gray-500 text-sm">
+                    No new notifications
+                  </div>
+                ) : (
+                  <div className="flex flex-col">
+                    {notifications.map((notif, idx) => (
+                      <div key={idx} className="px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                        <div className="flex items-start gap-3">
+                          <div className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${
+                            notif.type === 'PENALTY' ? 'bg-red-500' :
+                            notif.type === 'WARNING' ? 'bg-orange-500' : 'bg-blue-500'
+                          }`} />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900">{notif.title}</p>
+                            <p className="text-xs text-gray-600 mt-0.5 line-clamp-2">{notif.message}</p>
+                            <p className="text-[10px] text-gray-400 mt-1">
+                              {new Date(notif.timestamp).toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Student Profile Dropdown */}
           <div className="relative">

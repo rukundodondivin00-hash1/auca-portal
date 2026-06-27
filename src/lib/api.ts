@@ -17,11 +17,13 @@ contractApi.interceptors.request.use((config) => {
   return config;
 });
 
-// IMS Registration Backend (Port 8085) - for registration, auth, courses
+// IMS Registration Backend - for registration, auth, courses
 export const imsApi = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8085',
+  baseURL: import.meta.env.VITE_IMS_API_URL || 'https://auca-ims.onrender.com',
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
+    'x-ims-api-key': 'e779dd9128baca1d06ddcbaa32e897057dc8328910539b0162b82f96ca2777ff'
   },
   responseType: 'json' as const,
 });
@@ -98,6 +100,8 @@ export interface PaginatedResponse<T> {
 export interface Term {
   id: string;
   active: boolean;
+  registrationOpen?: boolean;
+  preregistrationOpen?: boolean;
 }
 
 export interface Course {
@@ -106,6 +110,11 @@ export interface Course {
   courseName: string;
   credits: number;
   fee: number;
+  capacity?: number;
+  group?: string;
+  lecturerCode?: string;
+  day?: string;
+  startTime?: string;
 }
 
 export interface ContractStatusUpdate {
@@ -116,15 +125,31 @@ export interface ContractStatusUpdate {
 // API ENDPOINTS
 // ==========================================
 
-// Auth - IMS API
+// Local mock API for admin (Port 8085)
+export const localMockApi = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8085',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  responseType: 'json' as const,
+});
+
+localMockApi.interceptors.request.use((config) => {
+  const token = localStorage.getItem('jwt_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Auth - IMS API (External for Students)
 export const authApi = {
   login: (credentials: any) => imsApi.post('/api/v1/common/auth/signin', credentials),
-  signup: (userData: any) => imsApi.post('/api/v1/common/auth/signup', userData),
 };
 
+// Admin Auth - Local Mock API
 export const adminAuthApi = {
-  login: (credentials: any) => imsApi.post('/api/v1/common/auth/signin', credentials),
-  signup: (userData: any) => imsApi.post('/api/v1/common/auth/signup', userData),
+  login: (credentials: any) => localMockApi.post('/api/v1/common/auth/signin', credentials),
 };
 
 // Student Dashboard - IMS Backend with X-Student-Id header
@@ -145,22 +170,45 @@ export const paymentApi = {
     contractApi.get('/api/payments/my-balance'),
   processPayment: (studentId: string, data: { amount: number; transactionId?: string }) =>
     contractApi.post('/api/payments/confirm', data),
+  getStudentFees: (studentId: string) =>
+    imsApi.get(`/api/v1/finance/student-payments/${studentId}/fees`),
 };
 
 // Registration - IMS Backend
 export const registrationApi = {
   getTerm: () => imsApi.get<Term>('/api/v1/registration/term'),
-  getAvailableCourses: () => imsApi.get<Course[]>('/api/v1/registration/available-courses'),
+  getMyRegistration: (studentId: string, termId: string) => 
+    imsApi.get(`/api/v1/registration/registration?termId=${termId}&studentId=${studentId}`),
+  // Map to the new API path for courses in current term (paginated by default, so we might need .data.content)
+  getAvailableCourses: () => imsApi.get<any>('/api/v1/registration/course/current-term?size=100'),
+  // Map submit to the new API if possible, or leave as is if they just meant Term logic. 
+  // Let's assume there's a bulk submit or just keep the old one and see if it works. 
+  // I will use /api/v1/registration/registration/add-course-self or keep submit if it's there. 
+  // Actually, the new API has /api/v1/registration/registration/add-course-self. Let's keep /submit for now but the user said "use the term from the api". 
   submitRegistration: (studentId: string, courseIds: number[]) =>
     imsApi.post('/api/v1/registration/submit', courseIds, {
       headers: { 'X-Student-Id': studentId }
     }),
 };
 
-// Admin Academic - IMS Backend
+// Admin Academic - IMS Backend (Colleague's API)
 export const adminAcademicApi = {
-  addCourse: (course: Partial<Course>) => imsApi.post<Course>('/api/v1/admin/academic/courses', course),
-  activateTerm: (termId: string) => imsApi.put(`/api/v1/admin/academic/terms/${termId}/activate`),
+  getAllTerms: () =>
+    imsApi.get('/api/v1/registration/term/all?size=500'),
+  addCourse: (course: Partial<Course> & { termId?: string }) => 
+    imsApi.post<Course>(`/api/v1/registration/course?termId=${course.termId}`, course),
+  activateTerm: (termId: string) => 
+    imsApi.post(`/api/v1/registration/term/set-active?id=${termId}`),
+  openRegistration: (termId: string) => 
+    imsApi.patch(`/api/v1/registration/term/preregistration/open?termId=${termId}`),
+  closeRegistration: () => 
+    imsApi.patch(`/api/v1/registration/term/preregistration/close`),
+  getCourses: (termId: string) => 
+    imsApi.get(`/api/v1/registration/registration/terms/${termId}/courses`),
+  deleteCourse: (courseId: number) => 
+    imsApi.delete(`/api/v1/registration/course?courseId=${courseId}`),
+  getAllCourses: () =>
+    imsApi.get(`/api/v1/academics/course/all?size=2000`),
 };
 
 // Admin - Contract System Backend

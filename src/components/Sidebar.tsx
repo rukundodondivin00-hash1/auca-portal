@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
-import { Pin, TrendingUp, Award, BookOpen, DollarSign, Bell, MessageSquare, Settings, LogOut, GraduationCap, FileSignature, FileText, Calendar } from 'lucide-react';
+import { Pin, TrendingUp, Award, BookOpen, DollarSign, Bell, MessageSquare, Settings, LogOut, GraduationCap, FileSignature, FileText, Calendar, CreditCard } from 'lucide-react';
 import { studentApi, registrationApi } from '@/lib/api';
 import aucaLogo from '@/images/AUCA-logo.png';
 
@@ -92,6 +92,7 @@ export default function Sidebar() {
               <NavItem icon={<FileSignature size={20} />} label="Sign Contract" href="/contract" isActive={location.pathname === '/contract'} isExpanded={isExpanded} />
             )}
             <NavItem icon={<FileText size={20} />} label="Contract Details" href="/contract-details" isActive={location.pathname === '/contract-details'} isExpanded={isExpanded} />
+            <NavItem icon={<CreditCard size={20} />} label="Exam Permit" href="/my-exam-permit" isActive={location.pathname === '/my-exam-permit'} isExpanded={isExpanded} />
           </ul>
         </div>
       </div>

@@ -12,12 +12,11 @@ import ContractPage from "./components/ContractPage";
 import ContractDetails from "./components/ContractDetails";
 import MyTranscript from "./components/MyTranscript"; 
 import MyRegistration from "./components/MyRegistration"; 
+import MyExamPermit from "./components/MyExamPermit";
 import MyBulletin from "./components/MyBulletin"; 
 import Login from "./components/authentication/Login"; 
-import Signup from "./components/authentication/Signup";
 import Settings from "./components/Settings";
 import AdminDashboard from "./pages/admin/AdminDashboard";
-import AdminAcademic from "./pages/admin/AdminAcademic"; // <-- ADDED THIS IMPORT
 import AdminContracts from "./pages/admin/AdminContracts";
 import AdminContractDetails from "./pages/admin/AdminContractDetails";
 import AdminStudents from "./pages/admin/AdminStudents";
@@ -42,10 +41,15 @@ function AdminAuthWrapper({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+import { useWebsocketNotifications } from "./hooks/useWebsocketNotifications";
+
 function StudentAuthWrapper({ children }: { children: React.ReactNode }) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
   const userRole = typeof window !== 'undefined' ? localStorage.getItem('user_role') : null;
   const isStudent = userRole === 'ROLE_STUDENT' || userRole === 'STUDENT';
+  const studentId = typeof window !== 'undefined' ? localStorage.getItem('student_id') : null;
+  
+  useWebsocketNotifications(isStudent ? studentId : null);
   
   if (!token) {
     return <Navigate to="/login" replace />;
@@ -79,7 +83,6 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Navigate to={hasToken ? "/student-dashboard" : "/login"} replace />} />
       <Route path="/login" element={<Login />} />
-      <Route path="/signup" element={<Signup />} />
       <Route path="/admin/login" element={<Navigate to="/login" replace />} />
 
       <Route path="/admin/*" element={
@@ -93,7 +96,6 @@ export default function App() {
                   <Routes>
                     <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
                     <Route path="/dashboard" element={<AdminDashboard />} />
-                    <Route path="/academic" element={<AdminAcademic />} /> {/* <-- ADDED THIS ROUTE */}
                     <Route path="/contracts" element={<AdminContracts />} />
                     <Route path="/contracts/:id" element={<AdminContractDetails />} />
                     <Route path="/students" element={<AdminStudents />} />
@@ -128,6 +130,7 @@ export default function App() {
                     <Route path="/my-fees" element={<MyFees />} />
                     <Route path="/my-transcript" element={<MyTranscript />} />
                     <Route path="/my-registration" element={<MyRegistration />} />
+                    <Route path="/my-exam-permit" element={<MyExamPermit />} />
                     
                     <Route path="/my-bulletin" element={<MyBulletin />} />
                     
