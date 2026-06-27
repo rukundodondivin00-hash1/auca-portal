@@ -76,6 +76,13 @@ export default function AdminSidebar() {
               isExpanded={isExpanded} 
             />
             <NavItem 
+              icon={<BookOpen size={20} />} 
+              label="Term Config" 
+              href="/admin/term-config" 
+              isActive={location.pathname === '/admin/term-config'} 
+              isExpanded={isExpanded} 
+            />
+            <NavItem 
               icon={<History size={20} />} 
               label="Penalties" 
               href="/admin/penalties" 

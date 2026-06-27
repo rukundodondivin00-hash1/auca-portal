@@ -22,6 +22,7 @@ import AdminContractDetails from "./pages/admin/AdminContractDetails";
 import AdminStudents from "./pages/admin/AdminStudents";
 import AdminStudentDetails from "./pages/admin/AdminStudentDetails";
 import AdminPenalties from "./pages/admin/AdminPenalties";
+import AdminTermConfig from "./pages/admin/AdminTermConfig";
 import AdminSettings from "./pages/admin/AdminSettings";
 import { Toaster } from "./components/ui/sonner";
 
@@ -101,6 +102,7 @@ export default function App() {
                     <Route path="/students" element={<AdminStudents />} />
                     <Route path="/students/:studentId" element={<AdminStudentDetails />} />
                     <Route path="/penalties" element={<AdminPenalties />} />
+                    <Route path="/term-config" element={<AdminTermConfig />} />
                     <Route path="/settings" element={<AdminSettings />} />
                   </Routes>
                 </div>

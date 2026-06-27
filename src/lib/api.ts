@@ -162,6 +162,13 @@ export const studentApi = {
   },
   createContract: (payload: any) => contractApi.post('/api/contracts', payload),
   getMyContracts: () => contractApi.get('/api/contracts/my-contracts'),
+  getMyPenalties: () => contractApi.get('/api/contracts/my-penalties'),
+  getTermConfig: async (termId: string) => {
+    const res = await contractApi.get('/api/contracts/term-config');
+    const config = res.data?.find((c: any) => c.termId === termId);
+    if (!config) throw new Error("Config not found");
+    return { data: config };
+  },
 };
 
 // Finance - IMS Backend
@@ -254,6 +261,16 @@ export const adminApi = {
 
   waiveInstallmentPenalty: (id: string) =>
     contractApi.post(`/api/admin/installments/${id}/waive-penalty`),
+
+  getTermConfig: async (termId: string) => {
+    const res = await contractApi.get('/api/admin/term-config');
+    const config = res.data?.find((c: any) => c.termId === termId);
+    if (!config) throw new Error("Config not found");
+    return { data: config };
+  },
+    
+  saveTermConfig: (data: { termId: string; maxInstallments: number; penaltyPercentage: number }) =>
+    contractApi.post('/api/admin/term-config', data),
 };
 
 export default { contractApi, imsApi };

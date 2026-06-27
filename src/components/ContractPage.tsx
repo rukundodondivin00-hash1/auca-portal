@@ -9,6 +9,8 @@ export default function ContractPage() {
   const [externalFeesData, setExternalFeesData] = useState<any>(null);
   const [existingContract, setExistingContract] = useState<any>(null);
   const [paidAmount, setPaidAmount] = useState(0);
+  const [maxInstallments, setMaxInstallments] = useState<number | null>(null);
+  const [penaltyPercentage, setPenaltyPercentage] = useState<number>(5);
   const navigate = useNavigate();
 
   const [installments, setInstallments] = useState<{ amount: string; date: string }[]>([]);
@@ -46,6 +48,20 @@ export default function ContractPage() {
           console.error("Could not fetch external fees", err);
         }
 
+        // 1c. Get term config
+        try {
+          const termRes = await registrationApi.getTerm();
+          if (termRes.data?.id) {
+             const configRes = await studentApi.getTermConfig(termRes.data.id);
+             if (configRes.data) {
+                setMaxInstallments(configRes.data.maxInstallments);
+                setPenaltyPercentage(Number(configRes.data.penaltyPercentage) * 100);
+             }
+          }
+        } catch (err) {
+          // Defaults will apply
+        }
+
         // 2. Check if contract already exists + get paid amount
         try {
           const contractRes = await studentApi.getMyContracts();
@@ -78,8 +94,9 @@ export default function ContractPage() {
   const termYear: number = termParts[0] || new Date().getFullYear();
   const semester: number = termParts[1] || 0;
 
-  // Installment count by semester
-  const installmentCount = semester === 1 ? 2 : semester === 2 ? 3 : 1;
+  // Installment count by semester or from config
+  const defaultInstallmentCount = semester === 1 ? 2 : semester === 2 ? 3 : 1;
+  const installmentCount = maxInstallments !== null ? maxInstallments : defaultInstallmentCount;
 
   // Suggested deadlines
   const getSuggestedDeadlines = (): string[] => {
@@ -303,7 +320,7 @@ export default function ContractPage() {
         </div>
         <div className="bg-gray-50 rounded-lg p-3 border">
           <p className="text-xs text-gray-500 mb-1">Semester</p>
-          <p className="font-bold">{semester === 1 ? 'Sem 1 (2 installments)' : 'Sem 2 (3 installments)'}</p>
+          <p className="font-bold">Sem {semester} ({installmentCount} installments)</p>
         </div>
       </div>
 
@@ -381,7 +398,7 @@ export default function ContractPage() {
         <label className="flex gap-3 cursor-pointer">
           <input type="checkbox" checked={hasAccepted} onChange={(e) => setHasAccepted(e.target.checked)} className="w-5 h-5 mt-0.5 rounded" />
           <span className="text-sm text-gray-700">
-            I agree to the payment terms outlined in the official contract and understand that missing any installment deadline will incur a strict 5% penalty.
+            I agree to the payment terms outlined in the official contract and understand that missing any installment deadline will incur a strict {penaltyPercentage}% penalty.
             I commit to paying the remaining balance of <strong>{formatCurrency(remainingBalance)}</strong> in {installmentCount} installments as specified above.
           </span>
         </label>

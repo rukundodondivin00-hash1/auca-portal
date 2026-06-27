@@ -1,23 +1,27 @@
 import { useState, useEffect } from 'react';
-import { FileText, CheckCircle2, TrendingUp, CalendarClock, Loader2, Check } from 'lucide-react';
+import { FileText, CheckCircle2, TrendingUp, CalendarClock, Loader2, Check, AlertCircle } from 'lucide-react';
 import { studentApi, paymentApi } from '@/lib/api';
 
 export default function ContractDetails() {
   const [data, setData] = useState<any>(null);
+  const [penalties, setPenalties] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchData = async () => {
     try {
       const studentId = localStorage.getItem('student_id') || '25306';
       
-      const [contractRes, balRes] = await Promise.all([
+      const [contractRes, balRes, penaltiesRes] = await Promise.all([
         studentApi.getMyContracts().catch(() => ({ data: { data: [] } })),
-        paymentApi.getMyBalance(studentId).catch(() => ({ data: { data: { totalPaid: 0 } } }))
+        paymentApi.getMyBalance(studentId).catch(() => ({ data: { data: { totalPaid: 0 } } })),
+        studentApi.getMyPenalties().catch(() => ({ data: { data: [] } }))
       ]);
 
       const contracts: any[] = contractRes.data?.data || [];
       const contract = contracts.length > 0 ? contracts[0] : null;
       const prePaid = Number(balRes.data?.data?.totalPaid || balRes.data?.totalPaid || 0);
+      
+      setPenalties(penaltiesRes.data?.data || []);
 
       setData(contract ? { contract, prePaid } : null);
     } catch {
@@ -188,6 +192,39 @@ export default function ContractDetails() {
           </div>
         )}
       </div>
+
+      {penalties.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm border overflow-hidden mt-6">
+          <div className="px-6 py-4 border-b bg-red-50 flex items-center gap-2">
+            <AlertCircle className="text-red-500" />
+            <h2 className="font-bold text-red-900">Penalty History</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  <th className="px-6 py-3 font-semibold uppercase">Date Applied</th>
+                  <th className="px-6 py-3 font-semibold uppercase text-right">Original Amount</th>
+                  <th className="px-6 py-3 font-semibold uppercase text-right text-red-600">Penalty Amount</th>
+                  <th className="px-6 py-3 font-semibold uppercase text-right">New Balance</th>
+                  <th className="px-6 py-3 font-semibold uppercase">Reason</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {penalties.map((p: any) => (
+                  <tr key={p.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 text-gray-600">{new Date(p.createdAt).toLocaleDateString()}</td>
+                    <td className="px-6 py-4 text-right">{formatCurrency(p.previousAmount)}</td>
+                    <td className="px-6 py-4 text-right font-bold text-red-600">+{formatCurrency(p.penaltyAmount)}</td>
+                    <td className="px-6 py-4 text-right font-bold">{formatCurrency(p.newAmount)}</td>
+                    <td className="px-6 py-4 text-gray-500 text-xs">{p.reason}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
