@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { Loader2, QrCode, Upload, Printer, AlertTriangle } from 'lucide-react';
+import { Printer, AlertTriangle, Upload, Loader2 } from 'lucide-react';
 import { studentApi, paymentApi, registrationApi } from '@/lib/api';
 import aucaLogo from '@/images/AUCA-logo.png';
+import { QRCodeSVG } from 'qrcode.react';
 
 interface Course {
   courseCode: string;
@@ -150,6 +151,14 @@ export default function MyExamPermit() {
   // Calculate total credits
   const totalCredits = permitData?.courses?.reduce((sum, c) => sum + c.credits, 0) || 0;
 
+  // Generate QR code content
+  const qrContent = permitData ? JSON.stringify({
+    id: permitData.studentId,
+    name: permitData.name,
+    term: permitData.termId,
+    status: permitStatus === 'FULL' ? 'FULL' : 'PARTIAL'
+  }) : '';
+
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-20">
       
@@ -190,8 +199,8 @@ export default function MyExamPermit() {
                 <p className="text-xs text-slate-500 mt-2 font-medium">PRINT DATE: {new Date().toLocaleString().toUpperCase()}</p>
               </div>
             </div>
-            <div className="flex flex-col items-center justify-center p-2 border-2 border-dashed border-gray-300 rounded-lg">
-              <QrCode size={80} className="text-slate-800" />
+            <div className="flex flex-col items-center justify-center p-2 border-2 border-dashed border-gray-300 rounded-lg bg-white">
+              <QRCodeSVG value={qrContent} size={80} level="M" includeMargin={false} />
             </div>
           </div>
 

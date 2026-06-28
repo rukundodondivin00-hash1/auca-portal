@@ -169,6 +169,18 @@ export const studentApi = {
     if (!config) throw new Error("Config not found");
     return { data: config };
   },
+  getTranscript: () => {
+    const studentId = localStorage.getItem('student_id') || '';
+    return imsApi.get('/api/v1/common/student/transcript', {
+      headers: { 'X-Student-Id': studentId }
+    });
+  },
+  getStudentBulletin: () => {
+    const studentId = localStorage.getItem('student_id') || '';
+    return imsApi.get('/api/v1/academics/bulletin/student', {
+      headers: { 'X-Student-Id': studentId }
+    });
+  },
 };
 
 // Finance - IMS Backend

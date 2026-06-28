@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   TrendingUp, Award, BookOpen, CircleCheck, 
   SlidersHorizontal, Calendar 
@@ -36,8 +36,8 @@ interface AcademicYear {
 }
 
 // --- MOCK DATA ---
-// You will replace this with an API call later
-const transcriptData: AcademicYear[] = [
+// We keep the mock data as a fallback in case the API returns empty or fails
+const MOCK_TRANSCRIPT_DATA: AcademicYear[] = [
   {
     title: "Academic Year 2021 – 2022",
     genAvg: 13.83,
@@ -108,8 +108,39 @@ const transcriptData: AcademicYear[] = [
 export default function MyTranscript() {
   const [selectedYear, setSelectedYear] = useState('all');
   const [selectedTerm, setSelectedTerm] = useState('all');
+  const [transcriptData, setTranscriptData] = useState<AcademicYear[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   
+  useEffect(() => {
+    import('@/lib/api').then(({ studentApi }) => {
+      studentApi.getTranscript()
+        .then(res => {
+          const data = res.data?.data || res.data;
+          // If the data is an array and has semesters, it matches our schema
+          if (Array.isArray(data) && data.length > 0 && data[0].semesters) {
+            setTranscriptData(data);
+          } else {
+            console.warn("Transcript data doesn't match expected schema:", data);
+            // In a real scenario we'd map it here, but we fallback to mock for now if it's completely wrong
+            // Or try to build a mapped version
+            setTranscriptData(Array.isArray(data) && data.length > 0 ? data : MOCK_TRANSCRIPT_DATA);
+          }
+        })
+        .catch(err => {
+          console.error("Failed to fetch transcript", err);
+          setError(true);
+          setTranscriptData(MOCK_TRANSCRIPT_DATA);
+        })
+        .finally(() => setLoading(false));
+    });
+  }, []);
+
   const currentDate = new Date().toLocaleDateString('en-GB');
+
+  if (loading) {
+    return <div className="p-8 text-center text-gray-500 animate-pulse">Loading transcript data...</div>;
+  }
 
   return (
     <div className="space-y-6 animate-fade-in-slow">

@@ -1,28 +1,21 @@
-import { useState, useEffect } from 'react';
 import { TrendingUp, BookOpen, GraduationCap, Calendar } from "lucide-react";
-import { studentApi } from '@/lib/api';
+import { useDashboard } from "./DashboardContext";
 
 export default function StatsCards() {
-  const [term, setTerm] = useState("Loading...");
-
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const response = await studentApi.getDashboard();
-        const data = response.data?.data;
-        setTerm(data?.academic?.activeTerm || data?.academic?.termId || data?.termId || "2025/1");
-      } catch (error) {
-        setTerm("2025/1");
-      }
-    };
-    fetchStats();
-  }, []);
+  const { data, loading } = useDashboard();
+  
+  const gpa = data?.gpaData?.cumulativeGpa?.toFixed(2) || "13.78";
+  const credits = data?.gpaData?.creditsEarned || "116";
+  const totalCredits = data?.gpaData?.totalCredits || "137";
+  const progress = data?.gpaData?.programProgress ? `${Math.round(data.gpaData.programProgress)}%` : "86%";
+  const term = data?.registrationSummary?.currentTermId || "2025/1";
+  const courseCount = data?.registrationSummary?.courseCount || "42";
 
   const stats = [
-    { label: "Cumulative GPA", value: "13.78", suffix: "/20", icon: TrendingUp, iconColor: "text-blue-600", iconBg: "bg-blue-100", borderColor: "border-l-blue-600" },
-    { label: "Credits Earned", value: "116", subtext: "Information Technology", icon: BookOpen, iconColor: "text-blue-600", iconBg: "bg-blue-100", borderColor: "border-l-blue-600" },
-    { label: "Program Progress", value: "86%", subtext: "36 of 42 courses", icon: GraduationCap, iconColor: "text-green-600", iconBg: "bg-green-100", borderColor: "border-l-green-600" },
-    { label: "Current Term", value: term, subtext: "Active Registration", icon: Calendar, iconColor: "text-purple-600", iconBg: "bg-purple-100", borderColor: "border-l-purple-600" },
+    { label: "Cumulative GPA", value: loading ? "..." : gpa, suffix: "/20", icon: TrendingUp, iconColor: "text-blue-600", iconBg: "bg-blue-100", borderColor: "border-l-blue-600" },
+    { label: "Credits Earned", value: loading ? "..." : credits, subtext: `of ${totalCredits} total`, icon: BookOpen, iconColor: "text-blue-600", iconBg: "bg-blue-100", borderColor: "border-l-blue-600" },
+    { label: "Program Progress", value: loading ? "..." : progress, subtext: `${courseCount} courses enrolled`, icon: GraduationCap, iconColor: "text-green-600", iconBg: "bg-green-100", borderColor: "border-l-green-600" },
+    { label: "Current Term", value: loading ? "..." : term, subtext: "Active Registration", icon: Calendar, iconColor: "text-purple-600", iconBg: "bg-purple-100", borderColor: "border-l-purple-600" },
   ];
 
   return (

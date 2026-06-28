@@ -25,15 +25,32 @@ export default function Header() {
     return localStorage.getItem('student_name') || 'Student';
   });
   
+  const studentId = localStorage.getItem('student_id') || '25306';
+  
   const [registeredTermId, setRegisteredTermId] = useState<string | null>(null);
+  const [termName, setTermName] = useState<string | null>(null);
   const [termOpen, setTermOpen] = useState<boolean | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [notifications, setNotifications] = useState<NotificationMessage[]>([]);
+  const [notifications, setNotifications] = useState<NotificationMessage[]>(() => {
+    const saved = localStorage.getItem(`notifications_${studentId}`);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        return [];
+      }
+    }
+    return [];
+  });
+
+  useEffect(() => {
+    if (studentId) {
+      localStorage.setItem(`notifications_${studentId}`, JSON.stringify(notifications.slice(0, 50))); // keep max 50
+    }
+  }, [notifications, studentId]);
   const navigate = useNavigate();
   const location = useLocation();
-
-  const studentId = localStorage.getItem('student_id') || '25306';
 
   // Get page name from current route for breadcrumb
   const pageName = (() => {
@@ -71,6 +88,7 @@ export default function Header() {
         const termRes = await registrationApi.getTerm();
         if (termRes.status === 200 && termRes.data) {
           setTermOpen(true);
+          setTermName(termRes.data.name || termRes.data.description || termRes.data.id || null);
         } else {
           setTermOpen(false);
         }
@@ -160,8 +178,8 @@ export default function Header() {
             <div className="hidden sm:flex items-center gap-2.5 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg">
               <Calendar size={15} className="text-blue-600 shrink-0" />
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-gray-900">
-                  {registeredTermId || '—'}
+                <span className="text-xs font-semibold text-gray-900 uppercase">
+                  {termName || registeredTermId || '—'}
                 </span>
                 {registeredTermId && (
                   <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { 
   Pin, LayoutDashboard, FileSignature, Users, 
-  History, Settings, LogOut, GraduationCap, BookOpen 
+  History, Settings, LogOut, GraduationCap, BookOpen, FileText 
 } from 'lucide-react';
 import aucaLogo from '@/images/AUCA-logo.png';
 
@@ -87,6 +87,13 @@ export default function AdminSidebar() {
               label="Penalties" 
               href="/admin/penalties" 
               isActive={location.pathname === '/admin/penalties'} 
+              isExpanded={isExpanded} 
+            />
+            <NavItem 
+              icon={<FileText size={20} />} 
+              label="Reports" 
+              href="/admin/reports" 
+              isActive={location.pathname === '/admin/reports'} 
               isExpanded={isExpanded} 
             />
           </ul>

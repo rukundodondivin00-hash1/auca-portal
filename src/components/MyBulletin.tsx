@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FileText, Download, Printer, Filter } from 'lucide-react';
 import aucaLogo from '@/images/AUCA-logo.png';
 
@@ -41,12 +41,52 @@ const mockBulletinData: Record<string, any> = {
 
 export default function MyBulletin() {
   const [selectedTerm, setSelectedTerm] = useState(mockTerms[0]);
+  const [bulletinData, setBulletinData] = useState<Record<string, any>>(mockBulletinData);
+  const [loading, setLoading] = useState(true);
   
   const studentName = localStorage.getItem('student_name') || 'Student Name';
   const studentId = localStorage.getItem('student_id') || '25306';
   const currentDate = new Date().toLocaleDateString('en-GB');
 
-  const data = mockBulletinData[selectedTerm];
+  useEffect(() => {
+    import('@/lib/api').then(({ studentApi }) => {
+      studentApi.getStudentBulletin()
+        .then(res => {
+          const data = res.data?.data || res.data;
+          if (data && typeof data === 'object') {
+            // Assuming the API returns a structured object matching or similar to our schema
+            // We'll wrap it or use it. If it's an array of bulletins:
+            if (Array.isArray(data)) {
+              const mapped: Record<string, any> = {};
+              data.forEach((b: any) => {
+                if (b.term) mapped[b.term] = b;
+              });
+              if (Object.keys(mapped).length > 0) setBulletinData(mapped);
+            } else if (data.term) {
+              setBulletinData({ [data.term]: data });
+            }
+          } else {
+            console.warn("Bulletin data schema mismatch");
+          }
+        })
+        .catch(err => {
+          console.error("Failed to fetch bulletin", err);
+        })
+        .finally(() => setLoading(false));
+    });
+  }, []);
+
+  const availableTerms = Object.keys(bulletinData);
+  const currentTerm = availableTerms.includes(selectedTerm) ? selectedTerm : availableTerms[0];
+  const data = bulletinData[currentTerm];
+
+  if (loading) {
+    return <div className="p-8 text-center text-gray-500 animate-pulse">Loading academic bulletin...</div>;
+  }
+
+  if (!data) {
+    return <div className="p-8 text-center text-gray-500">No bulletin data available.</div>;
+  }
 
   return (
     <div className="space-y-6 animate-fade-in-slow pb-12">
@@ -61,12 +101,12 @@ export default function MyBulletin() {
               <Filter size={16} />
             </div>
             <select 
-              value={selectedTerm}
+              value={currentTerm}
               onChange={(e) => setSelectedTerm(e.target.value)}
-              className="bg-white/10 border border-blue-400/30 text-white text-sm rounded-lg focus:ring-white focus:border-white block w-full pl-9 pr-8 py-2.5 appearance-none cursor-pointer"
+              className="bg-white/10 border border-blue-400/30 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-9 p-2.5 appearance-none [&>option]:text-gray-900"
             >
-              {mockTerms.map(term => (
-                <option key={term} value={term} className="text-gray-900 bg-white">Term {term}</option>
+              {availableTerms.map(term => (
+                <option key={term} value={term}>{term}</option>
               ))}
             </select>
           </div>

@@ -24,7 +24,9 @@ import AdminStudentDetails from "./pages/admin/AdminStudentDetails";
 import AdminPenalties from "./pages/admin/AdminPenalties";
 import AdminTermConfig from "./pages/admin/AdminTermConfig";
 import AdminSettings from "./pages/admin/AdminSettings";
+import AdminReports from "./pages/admin/AdminReports";
 import { Toaster } from "./components/ui/sonner";
+import { DashboardProvider } from "./components/DashboardContext";
 
 function AdminAuthWrapper({ children }: { children: React.ReactNode }) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
@@ -65,15 +67,17 @@ function StudentAuthWrapper({ children }: { children: React.ReactNode }) {
 
 function DashboardHome() {
   return (
-    <div className="space-y-6">
-      <WelcomeBanner />
-      <StatsCards />
-      <QuickActions />
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <GpaChart />
-        <CreditsChart />
+    <DashboardProvider>
+      <div className="space-y-6">
+        <WelcomeBanner />
+        <StatsCards />
+        <QuickActions />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <GpaChart />
+          <CreditsChart />
+        </div>
       </div>
-    </div>
+    </DashboardProvider>
   );
 }
 
@@ -102,6 +106,7 @@ export default function App() {
                     <Route path="/students" element={<AdminStudents />} />
                     <Route path="/students/:studentId" element={<AdminStudentDetails />} />
                     <Route path="/penalties" element={<AdminPenalties />} />
+                    <Route path="/reports" element={<AdminReports />} />
                     <Route path="/term-config" element={<AdminTermConfig />} />
                     <Route path="/settings" element={<AdminSettings />} />
                   </Routes>

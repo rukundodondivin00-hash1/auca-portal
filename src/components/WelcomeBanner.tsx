@@ -2,36 +2,17 @@ import { useState, useEffect } from "react";
 import { ArrowUpRight, FileSignature, Loader2 } from "lucide-react";
 import { Link } from "react-router"; 
 import InitiatePaymentModal from "./InitiatePaymentModal";
-import { studentApi } from "@/lib/api";
+import { useDashboard } from "./DashboardContext";
 
 export default function WelcomeBanner() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [studentName, setStudentName] = useState("");
-  const [studentId, setStudentId] = useState("");
-  const [totalAmount, setTotalAmount] = useState(0);
-  const [hasContract, setHasContract] = useState(false);
-  const [isEligibleForContract, setIsEligibleForContract] = useState(false);
+  const { data, loading } = useDashboard();
   
-  useEffect(() => {
-    const storedStudentId = localStorage.getItem('student_id') || '';
-    const storedStudentName = localStorage.getItem('student_name') || '';
-    setStudentId(storedStudentId);
-    setStudentName(storedStudentName);
-    
-    studentApi.getDashboard()
-      .then(res => {
-        const data = res.data?.data || res.data;
-        setStudentName(data?.studentName || data?.fullName || storedStudentName || "");
-        setStudentId(data?.studentId || storedStudentId || "");
-        setTotalAmount(data?.totalFee || 0);
-        setHasContract(!!data?.contract);
-      })
-      .catch(() => {
-        setHasContract(false);
-      })
-      .finally(() => setLoading(false));
-  }, []);
+  const studentName = data?.studentName || data?.fullName || localStorage.getItem('student_name') || "";
+  const studentId = data?.studentId || localStorage.getItem('student_id') || "";
+  const totalAmount = data?.totalFee || 0;
+  const hasContract = !!data?.contract;
+  const isEligibleForContract = false; // We can ignore this for now since it's not used deeply here
 
   if (loading) {
     return (
