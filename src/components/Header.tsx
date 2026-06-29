@@ -32,8 +32,10 @@ export default function Header() {
   const [termOpen, setTermOpen] = useState<boolean | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const notifStorageKey = isStaff ? 'staff_notifications' : `notifications_${studentId}`;
+
   const [notifications, setNotifications] = useState<NotificationMessage[]>(() => {
-    const saved = localStorage.getItem(`notifications_${studentId}`);
+    const saved = localStorage.getItem(notifStorageKey);
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -45,10 +47,8 @@ export default function Header() {
   });
 
   useEffect(() => {
-    if (studentId) {
-      localStorage.setItem(`notifications_${studentId}`, JSON.stringify(notifications.slice(0, 50))); // keep max 50
-    }
-  }, [notifications, studentId]);
+    localStorage.setItem(notifStorageKey, JSON.stringify(notifications.slice(0, 50))); // keep max 50
+  }, [notifications, notifStorageKey]);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -101,16 +101,19 @@ export default function Header() {
   }, [studentId, isStaff]);
 
   useEffect(() => {
-    if (isStaff || !studentId) return;
+    if (!studentId && !isStaff) return;
 
     const contractApiUrl = import.meta.env.VITE_CONTRACT_API_URL || 'http://localhost:8089';
+    const topic = isStaff
+      ? '/topic/staff/notifications'
+      : `/topic/notifications/${studentId}`;
     
     const stompClient = new Client({
       webSocketFactory: () => new SockJS(`${contractApiUrl}/ws/notifications`),
       reconnectDelay: 5000,
       onConnect: () => {
-        console.log('Connected to WebSocket notifications');
-        stompClient.subscribe(`/topic/notifications/${studentId}`, (msg) => {
+        console.log(`Connected to WebSocket: ${topic}`);
+        stompClient.subscribe(topic, (msg) => {
           if (msg.body) {
             const newNotification: NotificationMessage = JSON.parse(msg.body);
             setNotifications((prev) => [newNotification, ...prev]);
