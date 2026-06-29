@@ -94,20 +94,9 @@ export default function MyFees() {
 
   const handlePaymentSuccess = () => {
     fetchData();
-    // After payment, if they don't have a contract, wait a bit and redirect to contract page if they meet the minimum
-    setTimeout(async () => {
-       try {
-         const balRes = await paymentApi.getMyBalance(studentId);
-         if (balRes.status === 200 && balRes.data) {
-           const newTotalPaid = Number(balRes.data.data?.totalPaid || balRes.data.totalPaid || 0);
-           if (!contract && minRequiredTotal > 0 && newTotalPaid >= minRequiredTotal) {
-             if (initialPaymentPercentage < 100) {
-                navigate('/contract');
-             }
-           }
-         }
-       } catch {}
-    }, 500);
+    if (!contract && initialPaymentPercentage < 100) {
+      navigate('/contract');
+    }
   };
 
   return (

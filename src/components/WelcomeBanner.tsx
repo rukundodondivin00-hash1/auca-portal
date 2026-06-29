@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { ArrowUpRight, FileSignature, Loader2 } from "lucide-react";
-import { Link } from "react-router"; 
+import { Link, useNavigate } from "react-router"; 
 import InitiatePaymentModal from "./InitiatePaymentModal";
 import { useDashboard } from "./DashboardContext";
 
 export default function WelcomeBanner() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const navigate = useNavigate();
   const { data, loading } = useDashboard();
   
   const studentName = data?.studentName || data?.fullName || localStorage.getItem('student_name') || "";
@@ -64,6 +65,11 @@ export default function WelcomeBanner() {
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)}
         hasActiveContract={hasContract}
+        onPaymentSuccess={() => {
+          if (!hasContract) {
+            navigate('/contract');
+          }
+        }}
       />
     </div>
   );

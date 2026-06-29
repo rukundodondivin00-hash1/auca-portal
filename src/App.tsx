@@ -120,14 +120,14 @@ export default function App() {
 
       <Route path="/*" element={
         <StudentAuthWrapper>
-          <div className="flex h-screen bg-gray-50 overflow-hidden">
+          <div className="flex h-screen bg-gray-50 overflow-hidden print:h-auto print:overflow-visible">
             <Sidebar />
 
-            <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+            <div className="flex flex-col flex-1 min-w-0 overflow-hidden print:overflow-visible">
               <Header />
 
-              <main className="flex-1 overflow-auto">
-                <div className="p-4 lg:p-6 max-w-[1560px] mx-auto">
+              <main className="flex-1 overflow-auto print:overflow-visible">
+                <div className="p-4 lg:p-6 max-w-[1560px] mx-auto print:p-0">
                   
                   <Routes>
                     <Route path="/" element={<DashboardHome />} />

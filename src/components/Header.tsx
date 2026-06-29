@@ -147,7 +147,7 @@ export default function Header() {
   };
 
   return (
-    <header className="bg-white border-b border-gray-200/80 px-3 lg:px-4 py-2 sticky top-0 z-30">
+    <header className="bg-white border-b border-gray-200/80 px-3 lg:px-4 py-2 sticky top-0 z-30 print:hidden">
       <div className="flex items-center justify-between gap-3">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2.5 min-w-0 flex-1 pl-10 lg:pl-0">
