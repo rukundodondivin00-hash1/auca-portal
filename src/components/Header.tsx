@@ -16,11 +16,11 @@ export interface NotificationMessage {
 }
 export default function Header() {
   const userRole = localStorage.getItem('user_role');
-  const isAdmin = userRole === 'ROLE_ADMIN' || userRole === 'ADMIN';
+  const isStaff = userRole === 'ROLE_STAFF' || userRole === 'STAFF';
 
   const [studentName] = useState(() => {
-    if (isAdmin) {
-      return localStorage.getItem('admin_name') || 'Administrator';
+    if (isStaff) {
+      return localStorage.getItem('staff_name') || 'Staffistrator';
     }
     return localStorage.getItem('student_name') || 'Student';
   });
@@ -74,7 +74,7 @@ export default function Header() {
   useEffect(() => {
 
     const fetchHeaderData = async () => {
-      if (isAdmin) return; // Admins don't need to fetch term data for themselves
+      if (isStaff) return; // Staffs don't need to fetch term data for themselves
       try {
         // Get student registration to show their term in the header
         const regRes = await imsApi.get('/api/v1/registration/my-registration', {
@@ -98,12 +98,12 @@ export default function Header() {
     };
 
     fetchHeaderData();
-  }, [studentId, isAdmin]);
+  }, [studentId, isStaff]);
 
   useEffect(() => {
-    if (isAdmin || !studentId) return;
+    if (isStaff || !studentId) return;
 
-    const contractApiUrl = import.meta.env.VITE_CONTRACT_API_URL || 'http://localhost:8088';
+    const contractApiUrl = import.meta.env.VITE_CONTRACT_API_URL || 'http://localhost:8089';
     
     const stompClient = new Client({
       webSocketFactory: () => new SockJS(`${contractApiUrl}/ws/notifications`),
@@ -128,7 +128,7 @@ export default function Header() {
     return () => {
       stompClient.deactivate();
     };
-  }, [isAdmin, studentId]);
+  }, [isStaff, studentId]);
 
   const initials = studentName
     .split(' ')
@@ -142,8 +142,8 @@ export default function Header() {
     localStorage.removeItem('user_role');
     localStorage.removeItem('student_id');
     localStorage.removeItem('student_name');
-    localStorage.removeItem('admin_name');
-    navigate(isAdmin ? '/admin/login' : '/login');
+    localStorage.removeItem('staff_name');
+    navigate(isStaff ? '/staff/login' : '/login');
   };
 
   return (
@@ -153,7 +153,7 @@ export default function Header() {
         <div className="flex items-center gap-2.5 min-w-0 flex-1 pl-10 lg:pl-0">
           <nav aria-label="Breadcrumb" className="hidden md:flex items-center gap-1.5 text-sm min-w-0">
             <button
-              onClick={() => navigate(isAdmin ? '/admin/dashboard' : '/student-dashboard')}
+              onClick={() => navigate(isStaff ? '/staff/dashboard' : '/student-dashboard')}
               className="text-gray-400 hover:text-blue-600 transition-colors shrink-0"
             >
               <House size={15} />
@@ -173,8 +173,8 @@ export default function Header() {
             <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 bg-white border border-gray-200 rounded text-[10px] text-gray-400 font-mono shrink-0">Ctrl+/</kbd>
           </button>
 
-          {/* Term Badge - Hidden for Admins */}
-          {!isAdmin && (
+          {/* Term Badge - Hidden for Staffs */}
+          {!isStaff && (
             <div className="hidden sm:flex items-center gap-2.5 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg">
               <Calendar size={15} className="text-blue-600 shrink-0" />
               <div className="flex items-center gap-2">
@@ -195,7 +195,7 @@ export default function Header() {
             </div>
           )}
 
-          {!isAdmin && <div className="w-px h-7 bg-gray-200 hidden sm:block" />}
+          {!isStaff && <div className="w-px h-7 bg-gray-200 hidden sm:block" />}
 
           {/* Notifications */}
           <div className="relative">
@@ -265,7 +265,7 @@ export default function Header() {
               </div>
               <div className="hidden md:block text-left">
                 <p className="text-sm font-medium text-gray-900 leading-tight">{studentName}</p>
-                <p className="text-[11px] text-gray-500 leading-tight">{isAdmin ? 'Administrator' : 'Student'}</p>
+                <p className="text-[11px] text-gray-500 leading-tight">{isStaff ? 'Staffistrator' : 'Student'}</p>
               </div>
               <ChevronDown size={14} className="text-gray-400 hidden sm:block" />
             </button>
@@ -274,7 +274,7 @@ export default function Header() {
               <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
                 <div className="px-4 py-2 border-b border-gray-100">
                   <p className="text-sm font-semibold text-gray-900">{studentName}</p>
-                  {!isAdmin && <p className="text-xs text-gray-500">ID: {studentId}</p>}
+                  {!isStaff && <p className="text-xs text-gray-500">ID: {studentId}</p>}
                 </div>
                 <button
                   onClick={handleLogout}

@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { adminApi } from '@/lib/api';
+import { staffApi } from '@/lib/api';
 import { 
   FileText, Search, Loader2, Printer, Filter, AlertCircle, 
   CheckCircle2, XCircle, Clock
 } from 'lucide-react';
 import { format } from 'date-fns';
 
-export default function AdminReports() {
+export default function StaffReports() {
   const [activeTab, setActiveTab] = useState<'payments' | 'contracts' | 'penalties'>('payments');
   const [studentIdFilter, setStudentIdFilter] = useState('');
   const [debouncedFilter, setDebouncedFilter] = useState('');
@@ -34,15 +34,15 @@ export default function AdminReports() {
     try {
       if (activeTab === 'contracts') {
         if (debouncedFilter) {
-          const res = await adminApi.getContractsByStudent(debouncedFilter);
+          const res = await staffApi.getContractsByStudent(debouncedFilter);
           setContracts(res.data.content || []);
         } else {
           // Fetch page 0 with size 100 for report
-          const res = await adminApi.getContracts(0, 100, 'createdAt', 'desc');
+          const res = await staffApi.getContracts(0, 100, 'createdAt', 'desc');
           setContracts(res.data.content || []);
         }
       } else if (activeTab === 'penalties') {
-        const res = await adminApi.getPenalties(0, 100);
+        const res = await staffApi.getPenalties(0, 100);
         let fetchedPenalties = res.data.content || [];
         if (debouncedFilter) {
           const q = debouncedFilter.toLowerCase();
@@ -54,7 +54,7 @@ export default function AdminReports() {
         setPenalties(fetchedPenalties);
       } else if (activeTab === 'payments') {
         // Payments history is equivalent to installments. Fetch top 100
-        const res = await adminApi.getInstallments(0, 100);
+        const res = await staffApi.getInstallments(0, 100);
         let fetchedInstallments = res.data.content || [];
         if (debouncedFilter) {
           const q = debouncedFilter.toLowerCase();

@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { adminApi } from '@/lib/api';
+import { staffApi } from '@/lib/api';
 import { Loader2, Search, AlertCircle } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
-export default function AdminPenalties() {
+export default function StaffPenalties() {
   const [penalties, setPenalties] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -16,7 +16,7 @@ export default function AdminPenalties() {
   const fetchPenalties = async () => {
     setLoading(true);
     try {
-      const res = await adminApi.getPenalties();
+      const res = await staffApi.getPenalties();
       setPenalties(res.data.content || res.data.data.content || res.data.data || res.data);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load penalties');

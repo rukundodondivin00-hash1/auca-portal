@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FileSignature, History, Clock, CheckCircle2, Loader2, RefreshCw } from 'lucide-react';
-import { adminApi } from '@/lib/api';
+import { staffApi } from '@/lib/api';
 import type { Contract } from '@/lib/api';
 
-export default function AdminDashboard() {
+export default function StaffDashboard() {
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -19,10 +19,10 @@ export default function AdminDashboard() {
     setLoading(true);
     setError(null);
     try {
-      const response = await adminApi.getContracts(0, 20);
+      const response = await staffApi.getContracts(0, 20);
       setContracts(response.data.content ?? []);
     } catch (err: any) {
-      setError('Could not load contracts. Is the contract server running on port 8083?');
+      setError('Could not load contracts. Please ensure the backend server is running.');
       setContracts([]);
     } finally {
       setLoading(false);
@@ -113,7 +113,7 @@ export default function AdminDashboard() {
               <CardTitle>All Contracts</CardTitle>
               <CardDescription>Live data from the contract database</CardDescription>
             </div>
-            <Button variant="outline" size="sm" onClick={() => navigate('/admin/contracts')} className="text-xs">
+            <Button variant="outline" size="sm" onClick={() => navigate('/staff/contracts')} className="text-xs">
               View All
             </Button>
           </div>
@@ -160,7 +160,7 @@ export default function AdminDashboard() {
                   <Button
                     size="sm"
                     className="bg-[#00447b] hover:bg-[#00335c] text-white ml-4"
-                    onClick={() => navigate(`/admin/contracts/${contract.id}`)}
+                    onClick={() => navigate(`/staff/contracts/${contract.id}`)}
                   >
                     View
                   </Button>

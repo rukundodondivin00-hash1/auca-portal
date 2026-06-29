@@ -1,6 +1,6 @@
 import { Routes, Route, Navigate } from "react-router";
 import Sidebar from "./components/Sidebar";
-import AdminSidebar from "./components/admin/AdminSidebar";
+import StaffSidebar from "./components/staff/StaffSidebar";
 import Header from "./components/Header";
 import WelcomeBanner from "./components/WelcomeBanner";
 import StatsCards from "./components/StatsCards";
@@ -16,29 +16,29 @@ import MyExamPermit from "./components/MyExamPermit";
 import MyBulletin from "./components/MyBulletin"; 
 import Login from "./components/authentication/Login"; 
 import Settings from "./components/Settings";
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import AdminContracts from "./pages/admin/AdminContracts";
-import AdminContractDetails from "./pages/admin/AdminContractDetails";
-import AdminStudents from "./pages/admin/AdminStudents";
-import AdminStudentDetails from "./pages/admin/AdminStudentDetails";
-import AdminPenalties from "./pages/admin/AdminPenalties";
-import AdminTermConfig from "./pages/admin/AdminTermConfig";
-import AdminSettings from "./pages/admin/AdminSettings";
-import AdminReports from "./pages/admin/AdminReports";
+import StaffDashboard from "./pages/staff/StaffDashboard";
+import StaffContracts from "./pages/staff/StaffContracts";
+import StaffContractDetails from "./pages/staff/StaffContractDetails";
+import StaffStudents from "./pages/staff/StaffStudents";
+import StaffStudentDetails from "./pages/staff/StaffStudentDetails";
+import StaffPenalties from "./pages/staff/StaffPenalties";
+import StaffTermConfig from "./pages/staff/StaffTermConfig";
+import StaffSettings from "./pages/staff/StaffSettings";
+import StaffReports from "./pages/staff/StaffReports";
 import { Toaster } from "./components/ui/sonner";
 import { DashboardProvider } from "./components/DashboardContext";
 
-function AdminAuthWrapper({ children }: { children: React.ReactNode }) {
+function StaffAuthWrapper({ children }: { children: React.ReactNode }) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
   const userRole = typeof window !== 'undefined' ? localStorage.getItem('user_role') : null;
-  const isAdmin = userRole === 'ROLE_ADMIN' || userRole === 'ADMIN';
+  const isStaff = userRole === 'ROLE_STAFF' || userRole === 'STAFF' || userRole === 'ADMIN';
   
   if (!token) {
-    return <Navigate to="/admin/login" replace />;
+    return <Navigate to="/staff/login" replace />;
   }
   
-  if (!isAdmin) {
-    return <Navigate to="/admin/login" replace />;
+  if (!isStaff) {
+    return <Navigate to="/staff/login" replace />;
   }
   
   return <>{children}</>;
@@ -58,8 +58,8 @@ function StudentAuthWrapper({ children }: { children: React.ReactNode }) {
     return <Navigate to="/login" replace />;
   }
   
-  if (userRole === 'ROLE_ADMIN' || userRole === 'ADMIN') {
-    return <Navigate to="/admin/dashboard" replace />;
+  if (userRole === 'ROLE_STAFF' || userRole === 'STAFF' || userRole === 'ADMIN') {
+    return <Navigate to="/staff/dashboard" replace />;
   }
   
   return <>{children}</>;
@@ -88,34 +88,34 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Navigate to={hasToken ? "/student-dashboard" : "/login"} replace />} />
       <Route path="/login" element={<Login />} />
-      <Route path="/admin/login" element={<Navigate to="/login" replace />} />
+      <Route path="/staff/login" element={<Navigate to="/login" replace />} />
 
-      <Route path="/admin/*" element={
-        <AdminAuthWrapper>
+      <Route path="/staff/*" element={
+        <StaffAuthWrapper>
           <div className="flex h-screen bg-gray-50 overflow-hidden">
-            <AdminSidebar />
+            <StaffSidebar />
             <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
               <Header />
               <main className="flex-1 overflow-auto">
                 <div className="p-4 lg:p-6 max-w-[1560px] mx-auto">
                   <Routes>
-                    <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
-                    <Route path="/dashboard" element={<AdminDashboard />} />
-                    <Route path="/contracts" element={<AdminContracts />} />
-                    <Route path="/contracts/:id" element={<AdminContractDetails />} />
-                    <Route path="/students" element={<AdminStudents />} />
-                    <Route path="/students/:studentId" element={<AdminStudentDetails />} />
-                    <Route path="/penalties" element={<AdminPenalties />} />
-                    <Route path="/reports" element={<AdminReports />} />
-                    <Route path="/term-config" element={<AdminTermConfig />} />
-                    <Route path="/settings" element={<AdminSettings />} />
+                    <Route path="/" element={<Navigate to="/staff/dashboard" replace />} />
+                    <Route path="/dashboard" element={<StaffDashboard />} />
+                    <Route path="/contracts" element={<StaffContracts />} />
+                    <Route path="/contracts/:id" element={<StaffContractDetails />} />
+                    <Route path="/students" element={<StaffStudents />} />
+                    <Route path="/students/:studentId" element={<StaffStudentDetails />} />
+                    <Route path="/penalties" element={<StaffPenalties />} />
+                    <Route path="/reports" element={<StaffReports />} />
+                    <Route path="/term-config" element={<StaffTermConfig />} />
+                    <Route path="/settings" element={<StaffSettings />} />
                   </Routes>
                 </div>
               </main>
             </div>
             <Toaster />
           </div>
-        </AdminAuthWrapper>
+        </StaffAuthWrapper>
       } />
 
       <Route path="/*" element={

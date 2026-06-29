@@ -2,25 +2,25 @@ import { useState, useEffect } from 'react';
 import { User, Lock, Bell, Palette, Shield, Save, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
-export default function AdminSettings() {
+export default function StaffSettings() {
   const [activeTab, setActiveTab] = useState('profile');
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   
-  const adminName = localStorage.getItem('admin_name') || 'Finance Admin';
-  const adminId = localStorage.getItem('admin_id') || 'ADM-001';
+  const staffName = localStorage.getItem('staff_name') || 'Finance Staff';
+  const staffId = localStorage.getItem('staff_id') || 'ADM-001';
   
   // Profile State
-  const [email, setEmail] = useState(localStorage.getItem('admin_email') || `finance@auca.ac.rw`);
-  const [phone, setPhone] = useState(localStorage.getItem('admin_phone') || '+250 780 000 000');
+  const [email, setEmail] = useState(localStorage.getItem('staff_email') || `finance@auca.ac.rw`);
+  const [phone, setPhone] = useState(localStorage.getItem('staff_phone') || '+250 780 000 000');
 
   // Theme State
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
 
   // Notifications State
-  const [notifyNewContracts, setNotifyNewContracts] = useState(localStorage.getItem('notify_admin_contracts') !== 'false');
-  const [notifyLatePayments, setNotifyLatePayments] = useState(localStorage.getItem('notify_admin_late_pay') !== 'false');
-  const [notifySystemAlerts, setNotifySystemAlerts] = useState(localStorage.getItem('notify_admin_system') !== 'false');
+  const [notifyNewContracts, setNotifyNewContracts] = useState(localStorage.getItem('notify_staff_contracts') !== 'false');
+  const [notifyLatePayments, setNotifyLatePayments] = useState(localStorage.getItem('notify_staff_late_pay') !== 'false');
+  const [notifySystemAlerts, setNotifySystemAlerts] = useState(localStorage.getItem('notify_staff_system') !== 'false');
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -39,8 +39,8 @@ export default function AdminSettings() {
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    localStorage.setItem('admin_email', email);
-    localStorage.setItem('admin_phone', phone);
+    localStorage.setItem('staff_email', email);
+    localStorage.setItem('staff_phone', phone);
     
     setTimeout(() => {
       setIsSaving(false);
@@ -68,8 +68,8 @@ export default function AdminSettings() {
     <div className="space-y-6 animate-fade-in-slow pb-12 max-w-5xl">
       <div className="bg-[#00447b] text-white p-6 rounded-lg shadow-sm flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold">Admin Settings</h1>
-          <p className="text-blue-100 text-sm mt-1">Manage your administrator profile and preferences</p>
+          <h1 className="text-2xl font-bold">Staff Settings</h1>
+          <p className="text-blue-100 text-sm mt-1">Manage your staffistrator profile and preferences</p>
         </div>
       </div>
 
@@ -84,7 +84,7 @@ export default function AdminSettings() {
                 : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200'
             }`}
           >
-            <User size={18} /> Admin Information
+            <User size={18} /> Staff Information
           </button>
           <button
             onClick={() => setActiveTab('security')}
@@ -123,14 +123,14 @@ export default function AdminSettings() {
           {activeTab === 'profile' && (
             <Card className="shadow-sm border-gray-200 dark:border-slate-800 dark:bg-slate-900">
               <CardHeader>
-                <CardTitle className="dark:text-slate-100">Administrator Information</CardTitle>
+                <CardTitle className="dark:text-slate-100">Staffistrator Information</CardTitle>
                 <CardDescription className="dark:text-slate-400">Update your official contact details.</CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSaveProfile} className="space-y-6">
                   <div className="flex items-center gap-6">
                     <div className="h-24 w-24 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-blue-600 dark:text-blue-400 text-3xl font-bold border-4 border-white dark:border-slate-800 shadow-sm">
-                      {adminName.charAt(0)}
+                      {staffName.charAt(0)}
                     </div>
                     <div>
                       <button type="button" className="px-4 py-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-md text-sm font-medium text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
@@ -145,16 +145,16 @@ export default function AdminSettings() {
                       <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Full Name</label>
                       <input 
                         type="text" 
-                        defaultValue={adminName}
+                        defaultValue={staffName}
                         className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-md bg-gray-50 dark:bg-slate-800 text-gray-500 dark:text-slate-400 cursor-not-allowed focus:outline-none"
                         readOnly
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Admin ID</label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Staff ID</label>
                       <input 
                         type="text" 
-                        defaultValue={adminId}
+                        defaultValue={staffId}
                         className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-md bg-gray-50 dark:bg-slate-800 text-gray-500 dark:text-slate-400 cursor-not-allowed focus:outline-none" 
                         readOnly 
                       />
@@ -264,8 +264,8 @@ export default function AdminSettings() {
           {activeTab === 'notifications' && (
             <Card className="shadow-sm border-gray-200 dark:border-slate-800 dark:bg-slate-900">
               <CardHeader>
-                <CardTitle className="dark:text-slate-100">Admin Notifications</CardTitle>
-                <CardDescription className="dark:text-slate-400">Choose what administrative updates you receive.</CardDescription>
+                <CardTitle className="dark:text-slate-100">Staff Notifications</CardTitle>
+                <CardDescription className="dark:text-slate-400">Choose what staffistrative updates you receive.</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
@@ -278,7 +278,7 @@ export default function AdminSettings() {
                         <p className="text-sm text-gray-500 dark:text-slate-400">Get notified when a student signs a new payment contract.</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-1">
-                        <input type="checkbox" className="sr-only peer" checked={notifyNewContracts} onChange={() => handleToggleNotification('notify_admin_contracts', notifyNewContracts, setNotifyNewContracts)} />
+                        <input type="checkbox" className="sr-only peer" checked={notifyNewContracts} onChange={() => handleToggleNotification('notify_staff_contracts', notifyNewContracts, setNotifyNewContracts)} />
                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
                       </label>
                     </div>
@@ -289,7 +289,7 @@ export default function AdminSettings() {
                         <p className="text-sm text-gray-500 dark:text-slate-400">Alerts when student installments are overdue and penalties applied.</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-1">
-                        <input type="checkbox" className="sr-only peer" checked={notifyLatePayments} onChange={() => handleToggleNotification('notify_admin_late_pay', notifyLatePayments, setNotifyLatePayments)} />
+                        <input type="checkbox" className="sr-only peer" checked={notifyLatePayments} onChange={() => handleToggleNotification('notify_staff_late_pay', notifyLatePayments, setNotifyLatePayments)} />
                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
                       </label>
                     </div>
@@ -304,7 +304,7 @@ export default function AdminSettings() {
                         <p className="text-sm text-gray-500 dark:text-slate-400">Receive alerts when term configuration changes or registration closes.</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-1">
-                        <input type="checkbox" className="sr-only peer" checked={notifySystemAlerts} onChange={() => handleToggleNotification('notify_admin_system', notifySystemAlerts, setNotifySystemAlerts)} />
+                        <input type="checkbox" className="sr-only peer" checked={notifySystemAlerts} onChange={() => handleToggleNotification('notify_staff_system', notifySystemAlerts, setNotifySystemAlerts)} />
                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
                       </label>
                     </div>
@@ -318,7 +318,7 @@ export default function AdminSettings() {
             <Card className="shadow-sm border-gray-200 dark:border-slate-800 dark:bg-slate-900">
               <CardHeader>
                 <CardTitle className="dark:text-slate-100">Appearance</CardTitle>
-                <CardDescription className="dark:text-slate-400">Customize how the Admin Portal looks.</CardDescription>
+                <CardDescription className="dark:text-slate-400">Customize how the Staff Portal looks.</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">

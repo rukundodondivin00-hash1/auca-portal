@@ -5,10 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
 import { Search, RefreshCw, Eye, Loader2 } from 'lucide-react';
-import { adminApi } from '@/lib/api';
+import { staffApi } from '@/lib/api';
 import type { StudentSummary } from '@/lib/api';
 
-export default function AdminStudents() {
+export default function StaffStudents() {
   const [students, setStudents] = useState<StudentSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,10 +27,10 @@ export default function AdminStudents() {
     setLoading(true);
     setError(null);
     try {
-      const response = await adminApi.searchStudents(debouncedTerm);
+      const response = await staffApi.searchStudents(debouncedTerm);
       setStudents(response.data.content ?? []);
     } catch {
-      setError('Failed to load students. Make sure the contract server (port 8083) is running.');
+      setError('Failed to load students. Make sure the backend server is running.');
       setStudents([]);
     } finally {
       setLoading(false);
@@ -139,7 +139,7 @@ export default function AdminStudents() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => navigate(`/admin/contracts?student=${student.studentId}`)}
+                        onClick={() => navigate(`/staff/contracts?student=${student.studentId}`)}
                       >
                         <Eye className="h-4 w-4 mr-1" /> View Contracts
                       </Button>

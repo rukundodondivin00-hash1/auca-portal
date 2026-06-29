@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { CheckCircle2, ChevronRight, GraduationCap, Building } from 'lucide-react';
-import { authApi, adminAuthApi } from '../../lib/api';
+import { authApi, staffAuthApi } from '../../lib/api';
 
 export default function Signup() {
   const navigate = useNavigate();
-  const [role, setRole] = useState<'STUDENT' | 'ADMIN'>('STUDENT');
+  const [role, setRole] = useState<'STUDENT' | 'STAFF'>('STUDENT');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -38,14 +38,14 @@ export default function Signup() {
         });
         navigate('/login', { state: { message: "Registration successful. Please log in." } });
       } else {
-        await adminAuthApi.signup({
+        await staffAuthApi.signup({
           username,
           fullName,
           email,
           password,
-          role: 'ADMIN'
+          role: 'STAFF'
         });
-        navigate('/login', { state: { message: "Admin registration successful. Please log in." } });
+        navigate('/login', { state: { message: "Staff registration successful. Please log in." } });
       }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to create account. Please try again.');
@@ -76,13 +76,13 @@ export default function Signup() {
             </button>
             <button
               type="button"
-              onClick={() => setRole('ADMIN')}
+              onClick={() => setRole('STAFF')}
               className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${
-                role === 'ADMIN' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                role === 'STAFF' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
               }`}
             >
               <Building className="w-4 h-4" />
-              Administrator
+              Staff
             </button>
           </div>
 
@@ -124,18 +124,18 @@ export default function Signup() {
               </div>
             )}
 
-            {role === 'ADMIN' && (
+            {role === 'STAFF' && (
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">
                   Username
                 </label>
                 <input
                   type="text"
-                  required={role === 'ADMIN'}
+                  required={role === 'STAFF'}
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-                  placeholder="admin_john"
+                  placeholder="staff_john"
                 />
               </div>
             )}
@@ -197,7 +197,7 @@ export default function Signup() {
           <p className="mt-8 text-center text-sm text-slate-500">
             Already have an account?{' '}
             <button 
-              onClick={() => navigate(role === 'STUDENT' ? '/login' : '/admin/login')} 
+              onClick={() => navigate(role === 'STUDENT' ? '/login' : '/staff/login')} 
               className={`font-medium ${role === 'STUDENT' ? 'text-blue-600 hover:text-blue-700' : 'text-indigo-600 hover:text-indigo-700'}`}
             >
               Log in

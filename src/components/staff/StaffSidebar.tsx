@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import aucaLogo from '@/images/AUCA-logo.png';
 
-export default function AdminSidebar() {
+export default function StaffSidebar() {
   const [isPinned, setIsPinned] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const location = useLocation();
@@ -15,9 +15,9 @@ export default function AdminSidebar() {
   const handleLogout = () => {
     localStorage.removeItem('jwt_token');
     localStorage.removeItem('user_role');
-    localStorage.removeItem('admin_name');
+    localStorage.removeItem('staff_name');
     sessionStorage.clear();
-    navigate('/admin/login');
+    navigate('/staff/login');
   };
 
   const isExpanded = isPinned || isHovered;
@@ -29,12 +29,12 @@ export default function AdminSidebar() {
       onMouseLeave={() => setIsHovered(false)}
     >
       <div className="flex items-center justify-between p-4 h-16 shrink-0">
-        <Link to="/admin/dashboard" className="flex items-center gap-3 overflow-hidden whitespace-nowrap">
+        <Link to="/staff/dashboard" className="flex items-center gap-3 overflow-hidden whitespace-nowrap">
           <div className="flex items-center justify-center h-8 w-8 min-w-[32px]">
             <img src={aucaLogo} alt="AUCA Logo" className="object-contain w-full h-full" />
           </div>
           <div className={`font-bold text-xs text-blue-900 leading-tight transition-opacity duration-300 ${isExpanded ? 'opacity-100' : 'opacity-0'}`}>
-            FINANCE ADMIN<br/>PORTAL
+            FINANCE STAFF<br/>PORTAL
           </div>
         </Link>
         
@@ -51,49 +51,49 @@ export default function AdminSidebar() {
       <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col gap-6 p-3 mt-4">
         <div>
           <p className={`text-xs font-semibold text-gray-400 mb-2 px-2 transition-opacity duration-300 whitespace-nowrap ${isExpanded ? 'opacity-100' : 'opacity-0'}`}>
-            ADMIN PANEL
+            STAFF PANEL
           </p>
           <ul className="space-y-1">
             <NavItem 
               icon={<LayoutDashboard size={20} />} 
               label="Dashboard" 
-              href="/admin/dashboard" 
-              isActive={location.pathname === '/admin/dashboard'} 
+              href="/staff/dashboard" 
+              isActive={location.pathname === '/staff/dashboard'} 
               isExpanded={isExpanded} 
             />
             <NavItem 
               icon={<FileSignature size={20} />} 
               label="Contracts" 
-              href="/admin/contracts" 
-              isActive={location.pathname === '/admin/contracts'} 
+              href="/staff/contracts" 
+              isActive={location.pathname === '/staff/contracts'} 
               isExpanded={isExpanded} 
             />
             <NavItem 
               icon={<Users size={20} />} 
               label="Students" 
-              href="/admin/students" 
-              isActive={location.pathname === '/admin/students'} 
+              href="/staff/students" 
+              isActive={location.pathname === '/staff/students'} 
               isExpanded={isExpanded} 
             />
             <NavItem 
               icon={<BookOpen size={20} />} 
               label="Term Config" 
-              href="/admin/term-config" 
-              isActive={location.pathname === '/admin/term-config'} 
+              href="/staff/term-config" 
+              isActive={location.pathname === '/staff/term-config'} 
               isExpanded={isExpanded} 
             />
             <NavItem 
               icon={<History size={20} />} 
               label="Penalties" 
-              href="/admin/penalties" 
-              isActive={location.pathname === '/admin/penalties'} 
+              href="/staff/penalties" 
+              isActive={location.pathname === '/staff/penalties'} 
               isExpanded={isExpanded} 
             />
             <NavItem 
               icon={<FileText size={20} />} 
               label="Reports" 
-              href="/admin/reports" 
-              isActive={location.pathname === '/admin/reports'} 
+              href="/staff/reports" 
+              isActive={location.pathname === '/staff/reports'} 
               isExpanded={isExpanded} 
             />
           </ul>
@@ -104,8 +104,8 @@ export default function AdminSidebar() {
         <NavItem 
           icon={<Settings size={20} />} 
           label="Settings" 
-          href="/admin/settings" 
-          isActive={location.pathname === '/admin/settings'} 
+          href="/staff/settings" 
+          isActive={location.pathname === '/staff/settings'} 
           isExpanded={isExpanded} 
         />
         <button onClick={handleLogout} className={`flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors whitespace-nowrap text-gray-600 hover:bg-gray-100 hover:text-gray-900 w-full`}>

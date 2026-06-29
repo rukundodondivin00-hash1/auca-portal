@@ -4,11 +4,11 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
-import { adminApi } from '@/lib/api';
+import { staffApi } from '@/lib/api';
 import type { Contract, Installment } from '@/lib/api';
 import { ArrowLeft, Calendar, DollarSign } from 'lucide-react';
 
-export default function AdminContractDetails() {
+export default function StaffContractDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [contract, setContract] = useState<Contract | null>(null);
@@ -25,13 +25,13 @@ export default function AdminContractDetails() {
   const fetchContractDetails = async () => {
     setLoading(true);
     try {
-      const contractResponse = await adminApi.getContract(id!);
+      const contractResponse = await staffApi.getContract(id!);
       setContract(contractResponse.data);
-      const installmentsResponse = await adminApi.getInstallmentsByContract(id!);
+      const installmentsResponse = await staffApi.getInstallmentsByContract(id!);
       setInstallments(installmentsResponse.data);
 
       try {
-        const summaryResponse = await adminApi.getStudentSummary(contractResponse.data.studentId);
+        const summaryResponse = await staffApi.getStudentSummary(contractResponse.data.studentId);
         setStudentSummary(summaryResponse.data);
       } catch (err) {
         console.error('Failed to fetch student summary:', err);
@@ -138,7 +138,7 @@ export default function AdminContractDetails() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/admin/contracts')}>
+        <Button variant="ghost" size="icon" onClick={() => navigate('/staff/contracts')}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>

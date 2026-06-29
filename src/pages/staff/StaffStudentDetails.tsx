@@ -4,11 +4,11 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
-import { adminApi } from '@/lib/api';
+import { staffApi } from '@/lib/api';
 import type { StudentSummary, Contract } from '@/lib/api';
 import { ArrowLeft, Users, FileSignature, DollarSign, TrendingUp } from 'lucide-react';
 
-export default function AdminStudentDetails() {
+export default function StaffStudentDetails() {
   const { studentId } = useParams<{ studentId: string }>();
   const navigate = useNavigate();
   const [summary, setSummary] = useState<StudentSummary | null>(null);
@@ -25,8 +25,8 @@ export default function AdminStudentDetails() {
     setLoading(true);
     try {
       const [summaryRes, contractsRes] = await Promise.all([
-        adminApi.getStudentSummary(studentId!),
-        adminApi.getContractsByStudent(studentId!)
+        staffApi.getStudentSummary(studentId!),
+        staffApi.getContractsByStudent(studentId!)
       ]);
       setSummary(summaryRes.data);
       setContracts(contractsRes.data.content);
@@ -83,7 +83,7 @@ export default function AdminStudentDetails() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/admin/contracts')}>
+        <Button variant="ghost" size="icon" onClick={() => navigate('/staff/contracts')}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
@@ -187,7 +187,7 @@ export default function AdminStudentDetails() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => navigate(`/admin/contracts/${contract.id}`)}
+                        onClick={() => navigate(`/staff/contracts/${contract.id}`)}
                       >
                         View
                       </Button>

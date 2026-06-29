@@ -6,11 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { adminApi } from '@/lib/api';
+import { staffApi } from '@/lib/api';
 import type { Contract } from '@/lib/api';
 import { Search, RefreshCw, Loader2 } from 'lucide-react';
 
-export default function AdminContracts() {
+export default function StaffContracts() {
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -25,11 +25,11 @@ export default function AdminContracts() {
     setError(null);
     try {
       const response = statusFilter === 'all'
-        ? await adminApi.getContracts()
-        : await adminApi.getContractsByStatus(statusFilter);
+        ? await staffApi.getContracts()
+        : await staffApi.getContractsByStatus(statusFilter);
       setContracts(response.data.content ?? []);
     } catch (err: any) {
-      setError('Failed to load contracts. Make sure the contract server (port 8083) is running.');
+      setError('Failed to load contracts. Make sure the backend server is running.');
       setContracts([]);
     } finally {
       setLoading(false);
@@ -46,7 +46,7 @@ export default function AdminContracts() {
     setLoading(true);
     setError(null);
     try {
-      const response = await adminApi.getContractsByStudent(term);
+      const response = await staffApi.getContractsByStudent(term);
       setContracts(response.data.content ?? []);
     } catch {
       setError('Search failed. Try again.');
@@ -186,7 +186,7 @@ export default function AdminContracts() {
                       </TableCell>
                       <TableCell>{c.installmentCount ?? '—'}</TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" onClick={() => navigate(`/admin/contracts/${c.id}`)}>
+                        <Button variant="ghost" size="sm" onClick={() => navigate(`/staff/contracts/${c.id}`)}>
                           View Details
                         </Button>
                       </TableCell>

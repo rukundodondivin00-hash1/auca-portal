@@ -13,7 +13,7 @@ const mockBulletinData: Record<string, any> = {
     courses: [
       { code: 'INSY 311', title: 'Advanced Web Development', credits: 4, cat: 35.5, exam: 48.0, total: 83.5, grade: 'A' },
       { code: 'INSY 312', title: 'Network Security', credits: 3, cat: 28.0, exam: 42.5, total: 70.5, grade: 'B' },
-      { code: 'INSY 313', title: 'Database Administration', credits: 3, cat: 32.0, exam: 40.0, total: 72.0, grade: 'B' },
+      { code: 'INSY 313', title: 'Database Staffistration', credits: 3, cat: 32.0, exam: 40.0, total: 72.0, grade: 'B' },
       { code: 'MATH 221', title: 'Discrete Mathematics', credits: 3, cat: 36.0, exam: 55.0, total: 91.0, grade: 'A' },
       { code: 'ENGL 211', title: 'Business Communication', credits: 2, cat: 25.0, exam: 30.0, total: 55.0, grade: 'C' }
     ],

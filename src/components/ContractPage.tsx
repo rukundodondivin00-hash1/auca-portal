@@ -3,18 +3,22 @@ import { AlertCircle, CheckCircle2, Loader2, AlertTriangle, FileSignature } from
 import { Link, useNavigate } from 'react-router';
 import { imsApi, studentApi, paymentApi, registrationApi } from '@/lib/api';
 
+interface TermInstallmentConfig {
+  installmentNumber: number;
+  percentage: number;
+  deadlineDate: string;
+}
+
 export default function ContractPage() {
   const [loading, setLoading] = useState(true);
   const [registration, setRegistration] = useState<any>(null);
   const [externalFeesData, setExternalFeesData] = useState<any>(null);
   const [existingContract, setExistingContract] = useState<any>(null);
   const [paidAmount, setPaidAmount] = useState(0);
-  const [maxInstallments, setMaxInstallments] = useState<number | null>(null);
+  const [configInstallments, setConfigInstallments] = useState<TermInstallmentConfig[]>([]);
   const [penaltyPercentage, setPenaltyPercentage] = useState<number>(5);
   const navigate = useNavigate();
 
-  const [installments, setInstallments] = useState<{ amount: string; date: string }[]>([]);
-  const [isPlanConfirmed, setIsPlanConfirmed] = useState(false);
   const [hasAccepted, setHasAccepted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -54,12 +58,14 @@ export default function ContractPage() {
           if (termRes.data?.id) {
              const configRes = await studentApi.getTermConfig(termRes.data.id);
              if (configRes.data) {
-                setMaxInstallments(configRes.data.maxInstallments);
                 setPenaltyPercentage(Number(configRes.data.penaltyPercentage) * 100);
+                if (configRes.data.installments) {
+                  setConfigInstallments(configRes.data.installments.sort((a: any, b: any) => a.installmentNumber - b.installmentNumber));
+                }
              }
           }
         } catch (err) {
-          // Defaults will apply
+          console.error("Could not fetch term config", err);
         }
 
         // 2. Check if contract already exists + get paid amount
@@ -88,64 +94,32 @@ export default function ContractPage() {
     loadAll();
   }, [studentId]);
 
-  // Derive semester from termId e.g. "2025/1" → semester=1, year=2025
   const termId: string = externalFeesData?.termId || registration?.termId || '';
   const termParts = termId ? termId.split('/').map(Number) : [0, 0];
-  const termYear: number = termParts[0] || new Date().getFullYear();
   const semester: number = termParts[1] || 0;
-
-  // Installment count by semester or from config
-  const defaultInstallmentCount = semester === 1 ? 2 : semester === 2 ? 3 : 1;
-  const installmentCount = maxInstallments !== null ? maxInstallments : defaultInstallmentCount;
-
-  // Suggested deadlines
-  const getSuggestedDeadlines = (): string[] => {
-    if (semester === 1) {
-      return [`${termYear}-10-31`, `${termYear}-11-30`];
-    } else if (semester === 2) {
-      const y = termYear + 1;
-      return [`${y}-02-28`, `${y}-03-31`, `${y}-04-30`];
-    } else if (semester === 3) {
-      return [`${termYear}-07-31`];
-    }
-    return [];
-  };
-  const suggestedDeadlines = getSuggestedDeadlines();
 
   const totalFees = externalFeesData?.totalFee || registration?.totalFee || 0;
   const halfAmount = totalFees / 2;
   const isEligible = paidAmount >= halfAmount;
   const remainingBalance = totalFees - paidAmount;
 
-  // Initialize installments when data loads
-  useEffect(() => {
-    if (installmentCount > 0 && installments.length === 0 && totalFees > 0) {
-      // Pre-fill even split across installments
-      const perInstallment = Math.floor(remainingBalance / installmentCount);
-      const lastInstallment = remainingBalance - perInstallment * (installmentCount - 1);
-      setInstallments(
-        Array.from({ length: installmentCount }, (_, i) => ({
-          amount: i === installmentCount - 1 ? String(lastInstallment) : String(perInstallment),
-          date: suggestedDeadlines[i] || '',
-        }))
-      );
+  // Calculate generated installments based on percentages
+  let totalAllocated = 0;
+  const generatedInstallments = configInstallments.map((inst, index) => {
+    let amountDue;
+    if (index === configInstallments.length - 1) {
+      amountDue = remainingBalance - totalAllocated;
+    } else {
+      amountDue = Math.round((remainingBalance * inst.percentage) / 100);
+      totalAllocated += amountDue;
     }
-  }, [installmentCount, totalFees]);
+    return {
+      ...inst,
+      amount: amountDue
+    };
+  });
 
-  const updateInstallment = (index: number, field: 'amount' | 'date', value: string) => {
-    setInstallments(prev => {
-      const next = [...prev];
-      next[index] = { ...next[index], [field]: value };
-      return next;
-    });
-  };
-
-  const sumEntered = installments.reduce((sum, inst) => sum + (Number(inst.amount) || 0), 0);
-  const isAmountsValid = sumEntered > 0
-    && sumEntered === remainingBalance
-    && installments.every(inst => inst.date && Number(inst.amount) > 0);
-
-  const canSubmit = isPlanConfirmed && hasAccepted && isAmountsValid && !isSubmitting;
+  const canSubmit = hasAccepted && !isSubmitting && configInstallments.length > 0;
 
   const handleSubmitContract = async () => {
     if (!canSubmit) return;
@@ -158,17 +132,12 @@ export default function ContractPage() {
     setIsSubmitting(true);
     setSubmitError(null);
     try {
+      // Send an empty array for installments, the backend will auto-generate them
       const payload = {
         studentId,
         termId,
         totalFees,
-        installments: installments
-          .filter(inst => Number(inst.amount) > 0)
-          .map((inst, i) => ({
-            installmentNumber: i + 1,
-            deadlineDate: inst.date,
-            amount: Number(inst.amount),
-          })),
+        installments: [] 
       };
 
       const response = await studentApi.createContract(payload);
@@ -183,7 +152,7 @@ export default function ContractPage() {
         const msg = d?.message || d?.error || d?.details || JSON.stringify(d) || 'Failed to submit contract.';
         setSubmitError(`Error (${error.response.status}): ${msg}`);
       } else if (error?.request) {
-        setSubmitError('Network error: Cannot reach the contract server. Is it running on port 8083?');
+        setSubmitError('Network error: Cannot reach the backend server.');
       } else {
         setSubmitError(error?.message || 'Failed to submit contract. Please try again.');
       }
@@ -294,7 +263,7 @@ export default function ContractPage() {
       {/* Header */}
       <div className="bg-[#00447b] text-white rounded-xl p-6">
         <h1 className="text-2xl font-bold flex items-center gap-2"><FileSignature size={24} /> Sign Payment Contract</h1>
-        <p className="text-blue-200 text-sm mt-1">Term: {termId} — Semester {semester} · {installmentCount} installments</p>
+        <p className="text-blue-200 text-sm mt-1">Term: {termId} — Semester {semester}</p>
       </div>
 
       {submitError && (
@@ -320,7 +289,7 @@ export default function ContractPage() {
         </div>
         <div className="bg-gray-50 rounded-lg p-3 border">
           <p className="text-xs text-gray-500 mb-1">Semester</p>
-          <p className="font-bold">Sem {semester} ({installmentCount} installments)</p>
+          <p className="font-bold">Sem {semester}</p>
         </div>
       </div>
 
@@ -338,68 +307,45 @@ export default function ContractPage() {
 
       {/* Installment Plan Form */}
       <div className="bg-white rounded-xl shadow-sm border p-6">
-        <h3 className="font-bold text-gray-900 mb-1">Step 1: Set Installment Plan</h3>
+        <h3 className="font-bold text-gray-900 mb-1">Step 1: Installment Plan Review</h3>
         <p className="text-sm text-gray-500 mb-4">
-          Distribute your remaining balance of <strong>{formatCurrency(remainingBalance)}</strong> across {installmentCount} installments.
+          The following schedule has been defined by the administration for your remaining balance of <strong>{formatCurrency(remainingBalance)}</strong>.
         </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {Array.from({ length: installmentCount }, (_, i) => (
-            <div key={i} className="bg-gray-50 rounded-lg p-4 border space-y-3">
-              <p className="font-bold text-gray-800 text-sm">Installment {i + 1}</p>
-              <div>
-                <label className="text-xs font-semibold text-gray-500 block mb-1">Deadline Date</label>
-                <input
-                  type="date"
-                  value={installments[i]?.date || ''}
-                  onChange={(e) => updateInstallment(i, 'date', e.target.value)}
-                  disabled={isPlanConfirmed}
-                  className="w-full p-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-100"
-                />
-                {suggestedDeadlines[i] && (
-                  <p className="text-xs text-gray-400 mt-1">Suggested: {suggestedDeadlines[i]}</p>
-                )}
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-gray-500 block mb-1">Amount (RWF)</label>
-                <input
-                  type="number"
-                  value={installments[i]?.amount || ''}
-                  onChange={(e) => updateInstallment(i, 'amount', e.target.value)}
-                  disabled={isPlanConfirmed}
-                  className="w-full p-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-100"
-                  placeholder="0"
-                />
-              </div>
-            </div>
-          ))}
-        </div>
 
-        {/* Total check */}
-        <div className={`mt-4 p-3 rounded-lg text-sm flex justify-between ${sumEntered === remainingBalance ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-700'}`}>
-          <span>Installments total:</span>
-          <span className="font-bold">
-            {new Intl.NumberFormat('en-RW').format(sumEntered)} / {new Intl.NumberFormat('en-RW').format(remainingBalance)} RWF
-            {sumEntered === remainingBalance ? ' ✓' : ` (need ${new Intl.NumberFormat('en-RW').format(remainingBalance - sumEntered)} more)`}
-          </span>
-        </div>
-
-        <button
-          onClick={() => setIsPlanConfirmed(!isPlanConfirmed)}
-          disabled={!isAmountsValid && !isPlanConfirmed}
-          className="mt-4 px-6 py-2.5 bg-blue-600 text-white rounded-lg font-bold disabled:bg-gray-300 hover:bg-blue-700 transition-colors"
-        >
-          {isPlanConfirmed ? '✎ Edit Plan' : '✓ Confirm Plan'}
-        </button>
+        {configInstallments.length === 0 ? (
+          <div className="bg-red-50 text-red-700 p-4 rounded-lg border border-red-200 flex items-center gap-3">
+            <AlertCircle size={20} />
+            <p className="text-sm">The staff has not yet configured the installment schedule for this term. Please contact the registrar.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {generatedInstallments.map((inst, i) => (
+              <div key={i} className="bg-gray-50 rounded-lg p-4 border flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center font-bold text-blue-700 shrink-0">
+                  #{inst.installmentNumber}
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs font-semibold text-gray-500 mb-1">Deadline Date</p>
+                  <p className="font-bold text-gray-800">{inst.deadlineDate}</p>
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs font-semibold text-gray-500 mb-1">Amount Due ({inst.percentage}%)</p>
+                  <p className="font-bold text-gray-800">{formatCurrency(inst.amount)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Agreement & Submit */}
-      <div className={`bg-white rounded-xl shadow-sm border p-6 ${!isPlanConfirmed && 'opacity-50 pointer-events-none'}`}>
+      <div className={`bg-white rounded-xl shadow-sm border p-6 ${configInstallments.length === 0 && 'opacity-50 pointer-events-none'}`}>
         <h3 className="font-bold text-gray-900 mb-4">Step 2: Agree & Sign</h3>
         <label className="flex gap-3 cursor-pointer">
           <input type="checkbox" checked={hasAccepted} onChange={(e) => setHasAccepted(e.target.checked)} className="w-5 h-5 mt-0.5 rounded" />
           <span className="text-sm text-gray-700">
             I agree to the payment terms outlined in the official contract and understand that missing any installment deadline will incur a strict {penaltyPercentage}% penalty.
-            I commit to paying the remaining balance of <strong>{formatCurrency(remainingBalance)}</strong> in {installmentCount} installments as specified above.
+            I commit to paying the remaining balance of <strong>{formatCurrency(remainingBalance)}</strong> as scheduled above.
           </span>
         </label>
         <button

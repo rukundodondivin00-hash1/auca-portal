@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
-import { adminAuthApi } from '@/lib/api';
+import { staffAuthApi } from '@/lib/api';
 import aucaLogo from '@/images/AUCA-logo.png';
 
 interface LoginResponse {
@@ -9,14 +9,14 @@ interface LoginResponse {
   role: string;
   username?: string;
   fullName?: string;
-  adminName?: string;
+  staffName?: string;
 }
 
 const generateMockToken = (username: string, role: string) => {
   return btoa(JSON.stringify({ username, role, exp: Date.now() + 3600000 }));
 };
 
-export default function AdminLogin() {
+export default function StaffLogin() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -32,7 +32,7 @@ export default function AdminLogin() {
     setErrorMessage(null);
 
     try {
-      const response = await adminAuthApi.login({
+      const response = await staffAuthApi.login({
         username: email, 
         password: password
       });
@@ -46,15 +46,15 @@ export default function AdminLogin() {
         localStorage.setItem('jwt_token', mockToken);
         const normalizedRole = role === 'STUDENT' ? 'ROLE_STUDENT' : role;
         localStorage.setItem('user_role', normalizedRole);
-        if (data.adminName) localStorage.setItem('admin_name', data.adminName);
-        else if (data.fullName) localStorage.setItem('admin_name', data.fullName);
-        navigate(normalizedRole === 'ROLE_ADMIN' || normalizedRole === 'ADMIN' ? '/admin/dashboard' : '/student-dashboard');
+        if (data.staffName) localStorage.setItem('staff_name', data.staffName);
+        else if (data.fullName) localStorage.setItem('staff_name', data.fullName);
+        navigate(normalizedRole === 'ROLE_STAFF' || normalizedRole === 'STAFF' ? '/staff/dashboard' : '/student-dashboard');
       } else {
         throw new Error("Invalid response from server");
       }
 
     } catch (error: any) {
-      setErrorMessage("Invalid admin credentials. Please try again.");
+      setErrorMessage("Invalid staff credentials. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -86,8 +86,8 @@ export default function AdminLogin() {
                     />
                   </div>
                   <div className="mt-6 space-y-1">
-                    <h3 className="text-lg font-semibold text-white tracking-wide">AUCA Admin Portal</h3>
-                    <p className="text-sm italic text-white/90">Administration Dashboard</p>
+                    <h3 className="text-lg font-semibold text-white tracking-wide">AUCA Staff Portal</h3>
+                    <p className="text-sm italic text-white/90">Staff Dashboard</p>
                   </div>
                 </div>
               </div>
@@ -112,8 +112,8 @@ export default function AdminLogin() {
 
                       <div className="mx-auto w-full max-w-[400px]">
                         <div className="mb-6 text-center">
-                          <h2 className="mb-2 text-3xl font-bold text-slate-900 dark:text-slate-100">Admin Sign In</h2>
-                          <p className="text-sm text-slate-500 dark:text-slate-400">Access admin portal</p>
+                          <h2 className="mb-2 text-3xl font-bold text-slate-900 dark:text-slate-100">Staff Sign In</h2>
+                          <p className="text-sm text-slate-500 dark:text-slate-400">Access staff portal</p>
                         </div>
                         
                         <div className="mb-6 h-px bg-slate-200/80 dark:bg-slate-800/80"></div>
@@ -135,7 +135,7 @@ export default function AdminLogin() {
                         <form onSubmit={handleLogin} className="space-y-5">
                           <div>
                             <label htmlFor="email" className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-800 dark:text-slate-300">
-                              Admin Email
+                              Staff Email
                             </label>
                             <div className="relative">
                               <Mail className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
@@ -146,7 +146,7 @@ export default function AdminLogin() {
                                 onChange={(e) => setEmail(e.target.value)}
                                 disabled={isLoading}
                                 required 
-                                placeholder="Enter admin email"
+                                placeholder="Enter staff email"
                                 className="h-12 w-full rounded-xl border border-slate-300 bg-slate-50 pl-12 pr-4 text-sm text-slate-900 transition-all placeholder:text-slate-400 focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-600/20 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:border-blue-500" 
                               />
                             </div>
@@ -198,7 +198,7 @@ export default function AdminLogin() {
                         </form>
 
                         <p className="mt-8 text-center text-sm text-slate-500">
-                          Don't have an admin account?{' '}
+                          Don't have a staff account?{' '}
                           <button 
                             onClick={() => navigate('/signup')} 
                             className="font-medium text-blue-600 hover:text-blue-700"
@@ -214,7 +214,7 @@ export default function AdminLogin() {
             </div>
           </div>
           <p className="mt-6 text-center text-xs text-slate-400 dark:text-slate-500">
-            © {new Date().getFullYear()} AUCA • Admin Portal
+            © {new Date().getFullYear()} AUCA • Staff Portal
           </p>
         </div>
       </div>

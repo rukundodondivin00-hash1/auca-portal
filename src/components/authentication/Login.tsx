@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router';
-import { authApi, adminAuthApi } from '@/lib/api';
+import { authApi, staffAuthApi } from '@/lib/api';
 import { Building, GraduationCap, CheckCircle2, AlertCircle, Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, ChevronRight } from 'lucide-react';
 import aucaLogo from '@/images/AUCA-logo.png';
 
@@ -23,7 +23,7 @@ export default function Login() {
   const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<'STUDENT' | 'ADMIN'>('STUDENT');
+  const [role, setRole] = useState<'STUDENT' | 'STAFF'>('STUDENT');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(location.state?.message || null);
@@ -41,7 +41,7 @@ export default function Login() {
           password: password
         });
       } else {
-        response = await adminAuthApi.login({
+        response = await staffAuthApi.login({
           username: email, 
           password: password
         });
@@ -59,19 +59,29 @@ export default function Login() {
         else localStorage.setItem('student_id', email); // fallback
         if (data.fullName) localStorage.setItem('student_name', data.fullName);
         navigate('/student-dashboard');
-      } else if (role === 'ADMIN' && returnedRole) {
+      } else if (role === 'STAFF' && returnedRole) {
         const mockToken = token || generateMockToken(email, returnedRole);
         localStorage.setItem('jwt_token', mockToken);
         const normalizedRole = returnedRole === 'STUDENT' ? 'ROLE_STUDENT' : returnedRole;
         localStorage.setItem('user_role', normalizedRole);
-        if (data.adminName) localStorage.setItem('admin_name', data.adminName);
-        else if (data.fullName) localStorage.setItem('admin_name', data.fullName);
-        navigate('/admin/dashboard');
+        if (data.staffName) localStorage.setItem('staff_name', data.staffName);
+        else if (data.fullName) localStorage.setItem('staff_name', data.fullName);
+        navigate('/staff/dashboard');
       } else {
         throw new Error("Invalid response from server");
       }
     } catch (error: any) {
-      setError(`Invalid ${role.toLowerCase()} credentials. Please check your ${role === 'STUDENT' ? 'ID' : 'email'} and password.`);
+      if (error.response) {
+        if (error.response.status === 401 || error.response.status === 403) {
+           setError(`Invalid ${role === 'STAFF' ? 'staff' : role.toLowerCase()} credentials. Please check your ${role === 'STUDENT' ? 'ID' : 'email'} and password.`);
+        } else {
+           setError(`Server Error: ${error.response.status} - ${error.response.data?.message || 'Could not log in'}`);
+        }
+      } else if (error.request) {
+        setError(`Network Error: The authentication server is unreachable or sleeping. Please wait 1-2 minutes and try again.`);
+      } else {
+        setError(`Error: ${error.message}`);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -146,13 +156,13 @@ export default function Login() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => setRole('ADMIN')}
+                            onClick={() => setRole('STAFF')}
                             className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${
-                              role === 'ADMIN' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                              role === 'STAFF' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
                             }`}
                           >
                             <Building className="w-4 h-4" />
-                            Admin
+                            Staff
                           </button>
                         </div>
 
@@ -175,7 +185,7 @@ export default function Login() {
                         <form onSubmit={handleLogin} className="space-y-5">
                           <div>
                             <label htmlFor="email" className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-800 dark:text-slate-300">
-                              {role === 'STUDENT' ? 'Student ID' : 'Admin Username or Email'}
+                              {role === 'STUDENT' ? 'Student ID' : 'Staff Username or Email'}
                             </label>
                             <div className="relative">
                               <Mail className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
@@ -186,7 +196,7 @@ export default function Login() {
                                 onChange={(e) => setEmail(e.target.value)}
                                 disabled={isLoading}
                                 required 
-                                placeholder={role === 'STUDENT' ? "Enter your student ID" : "Enter admin username or email"}
+                                placeholder={role === 'STUDENT' ? "Enter your student ID" : "Enter staff username or email"}
                                 className="h-12 w-full rounded-xl border border-slate-300 bg-slate-50 pl-12 pr-4 text-sm text-slate-900 transition-all placeholder:text-slate-400 focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-600/20 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:border-blue-500" 
                               />
                             </div>
