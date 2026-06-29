@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Check, Info } from 'lucide-react';
 
-import { imsApi, contractApi, paymentApi, studentApi } from '@/lib/api';
+import { imsApi, contractApi, paymentApi, studentApi, registrationApi } from '@/lib/api';
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -35,17 +35,21 @@ export default function InitiatePaymentModal({
   useEffect(() => {
     if (!isOpen) return;
 
-    // Load registration info (for termId + total fees context)
-    imsApi.get('/api/v1/registration/my-registration', {
-      headers: { 'X-Student-Id': studentId }
-    })
-      .then(r => r.status === 200 ? r.data : null)
-      .then(data => {
-        setRegistration(data);
-        if (data?.termId) {
-          studentApi.getTermConfig(data.termId)
-            .then(res => {
-              if (res.data) setTermConfig(res.data);
+    // Load registration info
+    registrationApi.getTerm()
+      .then(termRes => {
+        const termId = termRes.data?.id;
+        if (termId) {
+          registrationApi.getMyRegistration(studentId, termId)
+            .then(regRes => {
+              if (regRes.status === 200 && regRes.data) {
+                setRegistration(regRes.data);
+                studentApi.getTermConfig(termId)
+                  .then(configRes => {
+                    if (configRes.data) setTermConfig(configRes.data);
+                  })
+                  .catch(() => {});
+              }
             })
             .catch(() => {});
         }
