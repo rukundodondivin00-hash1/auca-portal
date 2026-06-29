@@ -48,7 +48,7 @@ export default function StaffLogin() {
         localStorage.setItem('user_role', normalizedRole);
         if (data.staffName) localStorage.setItem('staff_name', data.staffName);
         else if (data.fullName) localStorage.setItem('staff_name', data.fullName);
-        navigate(normalizedRole === 'ROLE_STAFF' || normalizedRole === 'STAFF' ? '/staff/dashboard' : '/student-dashboard');
+        navigate(normalizedRole === 'ROLE_STAFF' || normalizedRole === 'STAFF' || normalizedRole === 'ADMIN' ? '/staff/dashboard' : '/student-dashboard');
       } else {
         throw new Error("Invalid response from server");
       }

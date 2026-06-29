@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Check, Info } from 'lucide-react';
 
-import { imsApi, contractApi, paymentApi } from '@/lib/api';
+import { imsApi, contractApi, paymentApi, studentApi } from '@/lib/api';
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -14,10 +14,11 @@ interface PaymentModalProps {
   /** If provided, payment goes to contract installments (post-contract). Otherwise it's a pre-payment. */
   hasActiveContract?: boolean;
   totalFees?: number;
+  minRequiredAmount?: number;
 }
 
 export default function InitiatePaymentModal({
-  isOpen, onClose, onPaymentSuccess, hasActiveContract, totalFees
+  isOpen, onClose, onPaymentSuccess, hasActiveContract, totalFees, minRequiredAmount = 1000
 }: PaymentModalProps) {
   const [paymentAmount, setPaymentAmount] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -26,6 +27,7 @@ export default function InitiatePaymentModal({
   const [isProcessing, setIsProcessing] = useState(false);
   const [totalPaid, setTotalPaid] = useState(0);
   const [registration, setRegistration] = useState<any>(null);
+  const [termConfig, setTermConfig] = useState<any>(null);
 
   const studentId = localStorage.getItem('student_id') || '';
   const jwtToken = localStorage.getItem('jwt_token') || '';
@@ -38,7 +40,16 @@ export default function InitiatePaymentModal({
       headers: { 'X-Student-Id': studentId }
     })
       .then(r => r.status === 200 ? r.data : null)
-      .then(data => setRegistration(data))
+      .then(data => {
+        setRegistration(data);
+        if (data?.termId) {
+          studentApi.getTermConfig(data.termId)
+            .then(res => {
+              if (res.data) setTermConfig(res.data);
+            })
+            .catch(() => {});
+        }
+      })
       .catch(() => {});
 
     // Load total pre-payments made so far
@@ -54,10 +65,21 @@ export default function InitiatePaymentModal({
 
 
 
+  let dynamicMinRequired = minRequiredAmount;
+  if (!hasActiveContract && registration && termConfig) {
+    const initialPaymentPercentage = termConfig.initialPaymentPercentage !== undefined ? Number(termConfig.initialPaymentPercentage) : 100;
+    const totalAmount = registration.totalFee || 0;
+    const minRequiredTotal = totalAmount > 0 ? (totalAmount * initialPaymentPercentage / 100) : 0;
+    const shortfall = minRequiredTotal - totalPaid;
+    if (shortfall > 0) {
+      dynamicMinRequired = Math.max(dynamicMinRequired, shortfall);
+    }
+  }
+
   const handleInitiatePayment = async () => {
     const amount = Number(paymentAmount);
-    if (!amount || amount < 1000) {
-      alert('Minimum payment is 1,000 RWF.');
+    if (!amount || amount < dynamicMinRequired) {
+      alert(`Minimum payment is ${new Intl.NumberFormat('en-RW', { style: 'currency', currency: 'RWF' }).format(dynamicMinRequired)}.`);
       return;
     }
 
@@ -118,9 +140,9 @@ export default function InitiatePaymentModal({
               placeholder="Enter amount"
               value={paymentAmount}
               onChange={(e) => setPaymentAmount(e.target.value)}
-              min={1000}
+              min={dynamicMinRequired}
             />
-            <p className="text-xs text-gray-500">Minimum payment: 1,000 RWF</p>
+            <p className="text-xs text-gray-500">Minimum payment: {new Intl.NumberFormat('en-RW', { style: 'currency', currency: 'RWF' }).format(dynamicMinRequired)}</p>
           </div>
 
           <div className="flex gap-4">
@@ -168,7 +190,7 @@ export default function InitiatePaymentModal({
           <Button
             className="bg-blue-900 text-white hover:bg-blue-800"
             onClick={handleInitiatePayment}
-            disabled={!paymentAmount || Number(paymentAmount) < 1000 || isProcessing}
+            disabled={!paymentAmount || Number(paymentAmount) < dynamicMinRequired || isProcessing}
           >
             {isProcessing
               ? <><Loader2 size={16} className="animate-spin mr-2" /> Processing...</>

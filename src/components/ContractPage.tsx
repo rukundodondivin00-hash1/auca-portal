@@ -17,6 +17,8 @@ export default function ContractPage() {
   const [paidAmount, setPaidAmount] = useState(0);
   const [configInstallments, setConfigInstallments] = useState<TermInstallmentConfig[]>([]);
   const [penaltyPercentage, setPenaltyPercentage] = useState<number>(5);
+  const [initialPaymentPercentage, setInitialPaymentPercentage] = useState<number>(100);
+  const [selectedInstallmentsCount, setSelectedInstallmentsCount] = useState<number>(0);
   const navigate = useNavigate();
 
   const [hasAccepted, setHasAccepted] = useState(false);
@@ -59,8 +61,13 @@ export default function ContractPage() {
              const configRes = await studentApi.getTermConfig(termRes.data.id);
              if (configRes.data) {
                 setPenaltyPercentage(Number(configRes.data.penaltyPercentage) * 100);
+                if (configRes.data.initialPaymentPercentage !== undefined) {
+                  setInitialPaymentPercentage(Number(configRes.data.initialPaymentPercentage));
+                }
                 if (configRes.data.installments) {
-                  setConfigInstallments(configRes.data.installments.sort((a: any, b: any) => a.installmentNumber - b.installmentNumber));
+                  const sorted = configRes.data.installments.sort((a: any, b: any) => a.installmentNumber - b.installmentNumber);
+                  setConfigInstallments(sorted);
+                  setSelectedInstallmentsCount(sorted.length);
                 }
              }
           }
@@ -99,23 +106,36 @@ export default function ContractPage() {
   const semester: number = termParts[1] || 0;
 
   const totalFees = externalFeesData?.totalFee || registration?.totalFee || 0;
-  const halfAmount = totalFees / 2;
-  const isEligible = paidAmount >= halfAmount;
+  const minRequiredAmount = totalFees > 0 ? (totalFees * initialPaymentPercentage) / 100 : 0;
+  const isEligible = paidAmount >= minRequiredAmount;
   const remainingBalance = totalFees - paidAmount;
+  
+  // The contract itself only covers the balance AFTER the required initial payment is met
+  const assumedPaidAmount = Math.max(paidAmount, minRequiredAmount);
+  const contractBalance = totalFees - assumedPaidAmount;
 
   // Calculate generated installments based on percentages
   let totalAllocated = 0;
-  const generatedInstallments = configInstallments.map((inst, index) => {
+  const activeInstallments = configInstallments.slice(0, selectedInstallmentsCount);
+  const generatedInstallments = activeInstallments.map((inst, index) => {
     let amountDue;
-    if (index === configInstallments.length - 1) {
-      amountDue = remainingBalance - totalAllocated;
+    if (index === selectedInstallmentsCount - 1) {
+      amountDue = contractBalance - totalAllocated;
     } else {
-      amountDue = Math.round((remainingBalance * inst.percentage) / 100);
+      if (selectedInstallmentsCount < configInstallments.length) {
+        amountDue = Math.round(contractBalance / selectedInstallmentsCount);
+      } else {
+        amountDue = Math.round((totalFees * inst.percentage) / 100);
+        const leftToAllocate = contractBalance - totalAllocated;
+        if (amountDue > leftToAllocate) amountDue = leftToAllocate;
+        if (amountDue < 0) amountDue = 0;
+      }
       totalAllocated += amountDue;
     }
     return {
       ...inst,
-      amount: amountDue
+      amount: Math.max(0, amountDue),
+      displayPercentage: selectedInstallmentsCount < configInstallments.length ? Math.round(100 / selectedInstallmentsCount) : inst.percentage
     };
   });
 
@@ -125,18 +145,18 @@ export default function ContractPage() {
     if (!canSubmit) return;
     
     if (!isEligible) {
-      setSubmitError(`First payment required: You must pay at least 50% (${formatCurrency(halfAmount)}) of your total fees before submitting the contract.`);
+      setSubmitError(`First payment required: You must pay at least ${initialPaymentPercentage}% (${formatCurrency(minRequiredAmount)}) of your total fees before submitting the contract.`);
       return;
     }
 
     setIsSubmitting(true);
     setSubmitError(null);
     try {
-      // Send an empty array for installments, the backend will auto-generate them
       const payload = {
         studentId,
         termId,
         totalFees,
+        numberOfInstallments: selectedInstallmentsCount,
         installments: [] 
       };
 
@@ -242,10 +262,10 @@ export default function ContractPage() {
         <div className="bg-red-50 border border-red-200 p-8 rounded-xl shadow-sm text-center max-w-md">
           <AlertTriangle size={40} className="text-red-600 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-red-700">Not Eligible Yet</h2>
-          <p className="mt-2 text-red-600">You must pay at least 50% of your total fees to sign a contract.</p>
+          <p className="mt-2 text-red-600">You must pay at least {initialPaymentPercentage}% of your total fees to sign a contract.</p>
           <div className="mt-4 bg-white border border-red-200 rounded-lg p-4 text-sm text-left space-y-1">
             <div className="flex justify-between"><span className="text-gray-600">Total Fees:</span><span className="font-bold">{formatCurrency(totalFees)}</span></div>
-            <div className="flex justify-between"><span className="text-gray-600">Minimum Required (50%):</span><span className="font-bold text-orange-600">{formatCurrency(halfAmount)}</span></div>
+            <div className="flex justify-between"><span className="text-gray-600">Minimum Required ({initialPaymentPercentage}%):</span><span className="font-bold text-orange-600">{formatCurrency(minRequiredAmount)}</span></div>
             <div className="flex justify-between"><span className="text-gray-600">Amount Paid:</span><span className="font-bold text-green-600">{formatCurrency(paidAmount)}</span></div>
             <div className="flex justify-between border-t pt-1 mt-1"><span className="font-semibold text-red-600">Still Need to Pay:</span><span className="font-bold text-red-700">{formatCurrency(stillNeeded)}</span></div>
           </div>
@@ -279,13 +299,17 @@ export default function ContractPage() {
           <p className="text-xs text-gray-500 mb-1">Total Fees</p>
           <p className="font-bold text-gray-900">{formatCurrency(totalFees)}</p>
         </div>
-        <div className="bg-gray-50 rounded-lg p-3 border">
-          <p className="text-xs text-gray-500 mb-1">Paid at Signing</p>
-          <p className="font-bold text-green-600">{formatCurrency(paidAmount)}</p>
+        <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+          <p className="text-gray-500 text-sm font-medium mb-1">
+            {isEligible ? "Paid at Signing" : "Initial Payment Required"}
+          </p>
+          <p className={`text-xl font-bold ${isEligible ? 'text-green-600' : 'text-blue-600'}`}>
+            {isEligible ? formatCurrency(paidAmount) : formatCurrency(minRequiredAmount)}
+          </p>
         </div>
-        <div className="bg-gray-50 rounded-lg p-3 border">
-          <p className="text-xs text-gray-500 mb-1">Remaining Balance</p>
-          <p className="font-bold text-orange-600">{formatCurrency(remainingBalance)}</p>
+        <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+          <p className="text-gray-500 text-sm font-medium mb-1">Contract Balance</p>
+          <p className="text-xl font-bold text-orange-600">{formatCurrency(contractBalance)}</p>
         </div>
         <div className="bg-gray-50 rounded-lg p-3 border">
           <p className="text-xs text-gray-500 mb-1">Semester</p>
@@ -299,7 +323,7 @@ export default function ContractPage() {
           <AlertTriangle className="text-amber-600 shrink-0 mt-0.5" size={18} />
           <div className="text-sm text-amber-800">
             <p className="font-bold">First payment required</p>
-            <p className="mt-0.5">You must pay at least 50% ({formatCurrency(halfAmount)}) before signing a contract. 
+            <p className="mt-0.5">You must pay at least {initialPaymentPercentage}% ({formatCurrency(minRequiredAmount)}) before signing a contract. 
             The system is allowing you to preview the contract form. <Link to="/my-fees" className="underline font-bold">Pay first →</Link></p>
           </div>
         </div>
@@ -307,10 +331,28 @@ export default function ContractPage() {
 
       {/* Installment Plan Form */}
       <div className="bg-white rounded-xl shadow-sm border p-6">
-        <h3 className="font-bold text-gray-900 mb-1">Step 1: Installment Plan Review</h3>
-        <p className="text-sm text-gray-500 mb-4">
-          The following schedule has been defined by the administration for your remaining balance of <strong>{formatCurrency(remainingBalance)}</strong>.
-        </p>
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h3 className="text-lg font-bold text-slate-800 mb-2">Step 1: Installment Plan Review</h3>
+            <p className="text-gray-500 text-sm mb-4">
+              After the required first payment, the remaining balance of <strong>{formatCurrency(contractBalance)}</strong> will be paid in installments.
+            </p>
+          </div>
+          {configInstallments.length > 1 && (
+            <div className="text-right">
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Number of Installments</label>
+              <select 
+                value={selectedInstallmentsCount}
+                onChange={(e) => setSelectedInstallmentsCount(Number(e.target.value))}
+                className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {Array.from({ length: configInstallments.length }, (_, i) => i + 1).map(num => (
+                  <option key={num} value={num}>{num} Installment{num > 1 ? 's' : ''}</option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
 
         {configInstallments.length === 0 ? (
           <div className="bg-red-50 text-red-700 p-4 rounded-lg border border-red-200 flex items-center gap-3">
@@ -329,7 +371,7 @@ export default function ContractPage() {
                   <p className="font-bold text-gray-800">{inst.deadlineDate}</p>
                 </div>
                 <div className="flex-1">
-                  <p className="text-xs font-semibold text-gray-500 mb-1">Amount Due ({inst.percentage}%)</p>
+                  <p className="text-xs font-semibold text-gray-500 mb-1">Amount Due (approx. {inst.displayPercentage}%)</p>
                   <p className="font-bold text-gray-800">{formatCurrency(inst.amount)}</p>
                 </div>
               </div>
@@ -343,10 +385,9 @@ export default function ContractPage() {
         <h3 className="font-bold text-gray-900 mb-4">Step 2: Agree & Sign</h3>
         <label className="flex gap-3 cursor-pointer">
           <input type="checkbox" checked={hasAccepted} onChange={(e) => setHasAccepted(e.target.checked)} className="w-5 h-5 mt-0.5 rounded" />
-          <span className="text-sm text-gray-700">
-            I agree to the payment terms outlined in the official contract and understand that missing any installment deadline will incur a strict {penaltyPercentage}% penalty.
-            I commit to paying the remaining balance of <strong>{formatCurrency(remainingBalance)}</strong> as scheduled above.
-          </span>
+          <p className="text-slate-600 text-sm leading-relaxed">
+            I agree to the payment terms outlined in the official contract and understand that missing any installment deadline will incur a strict {penaltyPercentage}% penalty. I commit to paying the remaining balance of <strong>{formatCurrency(contractBalance)}</strong> as scheduled above.
+          </p>
         </label>
         <button
           onClick={handleSubmitContract}

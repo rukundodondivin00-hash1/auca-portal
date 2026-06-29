@@ -16,7 +16,7 @@ export interface NotificationMessage {
 }
 export default function Header() {
   const userRole = localStorage.getItem('user_role');
-  const isStaff = userRole === 'ROLE_STAFF' || userRole === 'STAFF';
+  const isStaff = userRole === 'ROLE_STAFF' || userRole === 'STAFF' || userRole === 'ADMIN';
 
   const [studentName] = useState(() => {
     if (isStaff) {

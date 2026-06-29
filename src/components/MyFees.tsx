@@ -1,17 +1,19 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Wallet, FileText, DollarSign, Loader2, FileSignature } from 'lucide-react';
-import { studentApi, imsApi, paymentApi, registrationApi } from '@/lib/api';
+import { studentApi, imsApi, paymentApi, registrationApi, contractApi } from '@/lib/api';
 import InitiatePaymentModal from './InitiatePaymentModal';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 
 export default function MyFees() {
   const [contract, setContract] = useState<any>(null);
   const [registration, setRegistration] = useState<any>(null);
+  const [termConfig, setTermConfig] = useState<any>(null);
   const [prePaidAmount, setPrePaidAmount] = useState(0);
   const [paymentsHistory, setPaymentsHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const navigate = useNavigate();
 
   const studentId = localStorage.getItem('student_id') || '25306';
 
@@ -32,9 +34,16 @@ export default function MyFees() {
         if (regRes.status === 200 && regRes.data) {
           setRegistration(regRes.data);
         }
+        try {
+          const configRes = await studentApi.getTermConfig(termRes.data.id);
+          if (configRes.data) {
+            setTermConfig(configRes.data);
+          }
+        } catch {}
       }
     } catch {
       setRegistration(null);
+      setTermConfig(null);
     }
 
     try {
@@ -71,6 +80,35 @@ export default function MyFees() {
 
   const balance = paymentMade - totalAmount;
   const progressPercentage = totalAmount > 0 ? Math.min(Math.round((paymentMade / totalAmount) * 100), 100) : (paymentMade > 0 ? 100 : 0);
+
+  const initialPaymentPercentage = termConfig?.initialPaymentPercentage !== undefined ? Number(termConfig.initialPaymentPercentage) : 100;
+  const minRequiredTotal = totalAmount > 0 ? (totalAmount * initialPaymentPercentage / 100) : 0;
+  
+  let minPaymentAmount = 1000;
+  if (!contract && minRequiredTotal > 0) {
+    const shortfall = minRequiredTotal - prePaidAmount;
+    if (shortfall > 0) {
+      minPaymentAmount = shortfall;
+    }
+  }
+
+  const handlePaymentSuccess = () => {
+    fetchData();
+    // After payment, if they don't have a contract, wait a bit and redirect to contract page if they meet the minimum
+    setTimeout(async () => {
+       try {
+         const balRes = await paymentApi.getMyBalance(studentId);
+         if (balRes.status === 200 && balRes.data) {
+           const newTotalPaid = Number(balRes.data.data?.totalPaid || balRes.data.totalPaid || 0);
+           if (!contract && minRequiredTotal > 0 && newTotalPaid >= minRequiredTotal) {
+             if (initialPaymentPercentage < 100) {
+                navigate('/contract');
+             }
+           }
+         }
+       } catch {}
+    }, 500);
+  };
 
   return (
     <div className="space-y-6 animate-fade-in-slow">
@@ -187,7 +225,7 @@ export default function MyFees() {
           <div>
             <h3 className="font-bold text-lg">Want to pay in installments?</h3>
             <p className="text-blue-200 text-sm mt-1">
-              Pay 50% upfront and sign a payment contract to cover the remaining balance.
+              Pay {initialPaymentPercentage}% upfront and sign a payment contract to cover the remaining balance.
             </p>
           </div>
           <Link
@@ -202,9 +240,10 @@ export default function MyFees() {
       <InitiatePaymentModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onPaymentSuccess={() => { setTimeout(fetchData, 100); }}
+        onPaymentSuccess={handlePaymentSuccess}
         hasActiveContract={!!contract}
         totalFees={totalAmount}
+        minRequiredAmount={minPaymentAmount}
       />
     </div>
   );

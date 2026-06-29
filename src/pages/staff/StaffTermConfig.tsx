@@ -15,6 +15,7 @@ export default function StaffTermConfig() {
   const [termId, setTermId] = useState('');
   const [installments, setInstallments] = useState<InstallmentConfig[]>([]);
   const [penaltyPercentage, setPenaltyPercentage] = useState<number>(5);
+  const [initialPaymentPercentage, setInitialPaymentPercentage] = useState<number>(100);
   const [message, setMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
 
   useEffect(() => {
@@ -30,6 +31,9 @@ export default function StaffTermConfig() {
              const configRes = await staffApi.getTermConfig(activeTerm.id);
              if (configRes.data) {
                 setPenaltyPercentage(Number(configRes.data.penaltyPercentage) * 100);
+                if (configRes.data.initialPaymentPercentage !== undefined) {
+                  setInitialPaymentPercentage(Number(configRes.data.initialPaymentPercentage));
+                }
                 if (configRes.data.installments) {
                   setInstallments(configRes.data.installments.map((i: any) => ({
                     ...i,
@@ -77,9 +81,9 @@ export default function StaffTermConfig() {
     if (!termId) return;
     
     // Validate percentages
-    const totalPercentage = installments.reduce((sum, inst) => sum + Number(inst.percentage), 0);
-    if (Math.abs(totalPercentage - 100) > 0.01 && installments.length > 0) {
-      setMessage({ type: 'error', text: 'Total percentage must equal exactly 100%.' });
+    const totalPercentage = initialPaymentPercentage + installments.reduce((sum, inst) => sum + Number(inst.percentage), 0);
+    if (Math.abs(totalPercentage - 100) > 0.01) {
+      setMessage({ type: 'error', text: `Total percentage (Initial + Installments) must equal exactly 100%. Currently: ${totalPercentage}%` });
       return;
     }
 
@@ -87,6 +91,18 @@ export default function StaffTermConfig() {
     const missingDates = installments.some(i => !i.deadlineDate);
     if (missingDates) {
       setMessage({ type: 'error', text: 'Please set a deadline date for all installments.' });
+      return;
+    }
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const hasPastDates = installments.some(i => {
+      const d = new Date(i.deadlineDate);
+      d.setHours(0, 0, 0, 0);
+      return d < today;
+    });
+    if (hasPastDates) {
+      setMessage({ type: 'error', text: 'Installment deadline dates cannot be in the past.' });
       return;
     }
 
@@ -99,11 +115,22 @@ export default function StaffTermConfig() {
           ...i,
           percentage: Number(i.percentage)
         })),
-        penaltyPercentage: penaltyPercentage / 100
+        penaltyPercentage: penaltyPercentage / 100,
+        initialPaymentPercentage: initialPaymentPercentage
       });
       setMessage({ type: 'success', text: 'Term configuration saved successfully.' });
     } catch (err: any) {
-      setMessage({ type: 'error', text: err.response?.data || 'Failed to save configuration.' });
+      let errorMsg = 'Failed to save configuration.';
+      if (err.response?.data) {
+        if (typeof err.response.data === 'string') {
+          errorMsg = err.response.data;
+        } else if (err.response.data.message) {
+          errorMsg = err.response.data.message;
+        } else if (err.response.data.error) {
+          errorMsg = err.response.data.error;
+        }
+      }
+      setMessage({ type: 'error', text: errorMsg });
     } finally {
       setSaving(false);
     }
@@ -163,6 +190,18 @@ export default function StaffTermConfig() {
                   />
                   <p className="text-xs text-slate-500 mt-1">Penalty applied overnight when an installment deadline is missed.</p>
                 </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Initial Payment (%)</label>
+                  <input 
+                    type="number" 
+                    min={0}
+                    max={100}
+                    value={initialPaymentPercentage}
+                    onChange={(e) => setInitialPaymentPercentage(Number(e.target.value))}
+                    className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">Minimum upfront payment required for a contract (e.g. 50).</p>
+                </div>
               </div>
 
               <div className="pt-6 border-t border-slate-100">
@@ -220,9 +259,9 @@ export default function StaffTermConfig() {
                     ))}
                     
                     <div className="flex justify-between items-center p-4 bg-slate-100 rounded-lg border border-slate-200 mt-4">
-                      <span className="font-semibold text-slate-700">Total Percentage:</span>
-                      <span className={`font-bold ${installments.reduce((sum, inst) => sum + Number(inst.percentage), 0) === 100 ? 'text-green-600' : 'text-red-600'}`}>
-                        {installments.reduce((sum, inst) => sum + Number(inst.percentage), 0)}%
+                      <span className="font-semibold text-slate-700">Total Percentage (Initial + Installments):</span>
+                      <span className={`font-bold ${initialPaymentPercentage + installments.reduce((sum, inst) => sum + Number(inst.percentage), 0) === 100 ? 'text-green-600' : 'text-red-600'}`}>
+                        {initialPaymentPercentage + installments.reduce((sum, inst) => sum + Number(inst.percentage), 0)}%
                       </span>
                     </div>
                   </div>
@@ -232,7 +271,7 @@ export default function StaffTermConfig() {
               <div className="flex justify-end pt-4 border-t border-slate-100">
                 <button
                   onClick={handleSave}
-                  disabled={saving || installments.length === 0}
+                  disabled={saving}
                   className="flex items-center gap-2 bg-[#00447b] hover:bg-blue-900 text-white px-6 py-2.5 rounded-lg font-semibold transition-colors disabled:opacity-70"
                 >
                   {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}

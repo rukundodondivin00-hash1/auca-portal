@@ -63,6 +63,7 @@ export default function WelcomeBanner() {
       <InitiatePaymentModal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)}
+        hasActiveContract={hasContract}
       />
     </div>
   );
