@@ -16,6 +16,7 @@ export default function StaffReports() {
   const [overdueFilter, setOverdueFilter] = useState(false);
   const [departmentFilter, setDepartmentFilter] = useState('');
   const [academicYearFilter, setAcademicYearFilter] = useState('');
+  const [dateFilter, setDateFilter] = useState('');
   
   const [loading, setLoading] = useState(false);
   
@@ -35,7 +36,7 @@ export default function StaffReports() {
 
   useEffect(() => {
     fetchData();
-  }, [activeTab, debouncedFilter, balanceFilter, overdueFilter, departmentFilter, academicYearFilter]);
+  }, [activeTab, debouncedFilter, balanceFilter, overdueFilter, departmentFilter, academicYearFilter, dateFilter]);
 
   const loadDepartmentsForStudents = async (studentIds: string[], termId: string = '2025/1') => {
     const uniqueIds = Array.from(new Set(studentIds)).filter(id => id && !studentDepartments[id]);
@@ -105,6 +106,12 @@ export default function StaffReports() {
             (c.termId && c.termId.toLowerCase().includes(q))
           );
         }
+        if (dateFilter) {
+          fetchedContracts = fetchedContracts.filter((c: any) => {
+             const date = c.createdAt || '';
+             return date.startsWith(dateFilter);
+          });
+        }
         
         setContracts(fetchedContracts);
 
@@ -125,6 +132,19 @@ export default function StaffReports() {
           fetchedPenalties = fetchedPenalties.filter((p: any) => {
              const dept = studentDepartments[p.studentId] || '';
              return dept.toLowerCase().includes(q);
+          });
+        }
+        if (academicYearFilter) {
+          const q = academicYearFilter.toLowerCase();
+          fetchedPenalties = fetchedPenalties.filter((p: any) => 
+            (p.academicYear && p.academicYear.toLowerCase().includes(q)) || 
+            (p.termId && p.termId.toLowerCase().includes(q))
+          );
+        }
+        if (dateFilter) {
+          fetchedPenalties = fetchedPenalties.filter((p: any) => {
+             const date = p.createdAt || '';
+             return date.startsWith(dateFilter);
           });
         }
         setPenalties(fetchedPenalties);
@@ -150,6 +170,19 @@ export default function StaffReports() {
           fetchedInstallments = fetchedInstallments.filter((i: any) => {
              const dept = studentDepartments[i.studentId] || '';
              return dept.toLowerCase().includes(q);
+          });
+        }
+        if (academicYearFilter) {
+          const q = academicYearFilter.toLowerCase();
+          fetchedInstallments = fetchedInstallments.filter((i: any) => 
+            (i.academicYear && i.academicYear.toLowerCase().includes(q)) || 
+            (i.termId && i.termId.toLowerCase().includes(q))
+          );
+        }
+        if (dateFilter) {
+          fetchedInstallments = fetchedInstallments.filter((i: any) => {
+             const date = i.paidAt || i.dueDate || i.createdAt || '';
+             return date.startsWith(dateFilter);
           });
         }
         
@@ -303,18 +336,26 @@ export default function StaffReports() {
             </div>
           )}
 
-          {activeTab === 'contracts' && (
-            <div className="flex flex-col gap-1 w-32">
-              <label className="text-xs text-gray-500 font-medium">Academic Year</label>
-              <input
-                type="text"
-                placeholder="e.g. 2024"
-                value={academicYearFilter}
-                onChange={(e) => setAcademicYearFilter(e.target.value)}
-                className="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-              />
-            </div>
-          )}
+          <div className="flex flex-col gap-1 w-32">
+            <label className="text-xs text-gray-500 font-medium">Academic Year</label>
+            <input
+              type="text"
+              placeholder="e.g. 2024"
+              value={academicYearFilter}
+              onChange={(e) => setAcademicYearFilter(e.target.value)}
+              className="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1 w-40">
+            <label className="text-xs text-gray-500 font-medium">Specific Date</label>
+            <input
+              type="date"
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 outline-none text-gray-700"
+            />
+          </div>
 
           <div className="flex items-center gap-2 pb-1.5 ml-2">
             <input
@@ -329,13 +370,14 @@ export default function StaffReports() {
             </label>
           </div>
           
-          {(departmentFilter || balanceFilter || overdueFilter || academicYearFilter) && (
+          {(departmentFilter || balanceFilter || overdueFilter || academicYearFilter || dateFilter) && (
             <button
               onClick={() => {
                 setDepartmentFilter('');
                 setBalanceFilter('');
                 setOverdueFilter(false);
                 setAcademicYearFilter('');
+                setDateFilter('');
               }}
               className="text-sm text-blue-600 hover:text-blue-800 ml-auto pb-1 font-medium"
             >
