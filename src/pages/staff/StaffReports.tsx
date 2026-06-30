@@ -459,13 +459,15 @@ export default function StaffReports() {
                     <th className="px-6 py-4">Department</th>
                     <th className="px-6 py-4">Term</th>
                     <th className="px-6 py-4">Total Fees</th>
+                    <th className="px-6 py-4">Permit Granted</th>
+                    <th className="px-6 py-4">Reason</th>
                     <th className="px-6 py-4">Signed Date</th>
                     <th className="px-6 py-4">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 print:divide-gray-300">
                   {contracts.length === 0 ? (
-                    <tr><td colSpan={7} className="px-6 py-8 text-center text-gray-500">No contracts found.</td></tr>
+                    <tr><td colSpan={9} className="px-6 py-8 text-center text-gray-500">No contracts found.</td></tr>
                   ) : (
                     contracts.map((c, idx) => (
                       <tr key={c.id || idx} className="hover:bg-gray-50 print:hover:bg-transparent">
@@ -474,6 +476,8 @@ export default function StaffReports() {
                         <td className="px-6 py-3 text-gray-600 print:text-black">{studentDepartments[c.studentId] || '-'}</td>
                         <td className="px-6 py-3 text-gray-600 print:text-black">{c.termId}</td>
                         <td className="px-6 py-3 font-medium text-gray-900 print:text-black">{formatCurrency(c.totalFees)}</td>
+                        <td className="px-6 py-3 text-gray-600 print:text-black">{c.permitType ? <span className="text-green-600 font-medium print:text-black">Yes ({c.permitType})</span> : 'No'}</td>
+                        <td className="px-6 py-3 text-gray-600 print:text-black max-w-[150px] truncate print:max-w-none print:whitespace-normal" title={c.grantReason}>{c.grantReason || '-'}</td>
                         <td className="px-6 py-3 text-gray-600 print:text-black">{formatDate(c.createdAt)}</td>
                         <td className="px-6 py-3 print:hidden">{getStatusBadge(c.status)}</td>
                         <td className="px-6 py-3 hidden print:table-cell">{c.status}</td>
