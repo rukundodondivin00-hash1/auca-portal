@@ -85,35 +85,61 @@ export default function MyExamPermit() {
         }
 
         let paidAmount = 0;
+        let currentPrePaid = 0;
         try {
           const balRes = await paymentApi.getMyBalance(studentId);
-          const currentPrePaid = Number(balRes.data?.data?.totalPaid || balRes.data?.totalPaid || 0);
-          
+          currentPrePaid = Number(balRes.data?.data?.totalPaid || balRes.data?.totalPaid || 0);
+        } catch {
+          // ignore if balance API fails
+        }
+
+        let contracts: any[] = [];
+        try {
           const contractRes = await studentApi.getMyContracts();
-          const contracts: any[] = contractRes.data?.data || [];
+          contracts = contractRes.data?.data || [];
+        } catch {
+          // ignore if contracts API fails
+        }
+
+        let permits: any[] = [];
+        try {
+          const permitRes = await studentApi.getMyPermits();
+          permits = permitRes.data?.data || [];
+        } catch {
+          // ignore if permits API fails
+        }
+
+        try {
+          // Check if any permit exists for the current term
+          const grantedPermit = permits.find((p: any) => p.termId === termRes.data.id);
           
-          if (contracts.length > 0) {
-            // Check if any contract is a granted permit
-            const grantedContract = contracts.find((c: any) => c.grantedBy && c.grantReason);
-            if (grantedContract) {
-              setGrantedInfo({
-                grantedBy: grantedContract.grantedBy,
-                grantReason: grantedContract.grantReason,
-                permitType: grantedContract.permitType || 'FULL'
-              });
-              setPermitStatus(grantedContract.permitType || 'FULL');
-            } else {
+          if (grantedPermit) {
+            setGrantedInfo({
+              grantedBy: grantedPermit.grantedBy,
+              grantReason: grantedPermit.grantReason,
+              permitType: grantedPermit.permitType || 'FULL'
+            });
+            setPermitStatus(grantedPermit.permitType || 'FULL');
+            
+            // Still calculate paidAmount for display if contracts exist
+            if (contracts.length > 0) {
               const c = contracts[0];
               const installPaid = (c.installments || []).reduce((s: number, i: any) => s + (i.amountPaid || 0), 0);
               paidAmount = currentPrePaid + installPaid;
-              
-              if (paidAmount >= totalFee && totalFee > 0) {
-                setPermitStatus('FULL');
-              } else if (paidAmount >= minRequiredAmount && minRequiredAmount > 0) {
-                setPermitStatus('PARTIAL');
-              } else {
-                setPermitStatus('NONE');
-              }
+            } else {
+              paidAmount = currentPrePaid;
+            }
+          } else if (contracts.length > 0) {
+            const c = contracts[0];
+            const installPaid = (c.installments || []).reduce((s: number, i: any) => s + (i.amountPaid || 0), 0);
+            paidAmount = currentPrePaid + installPaid;
+            
+            if (paidAmount >= totalFee && totalFee > 0) {
+              setPermitStatus('FULL');
+            } else if (paidAmount >= minRequiredAmount && minRequiredAmount > 0) {
+              setPermitStatus('PARTIAL');
+            } else {
+              setPermitStatus('NONE');
             }
           } else {
             paidAmount = currentPrePaid;

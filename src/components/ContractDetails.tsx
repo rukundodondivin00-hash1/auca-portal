@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router';
 import { FileText, CheckCircle2, TrendingUp, CalendarClock, Loader2, Check, AlertCircle, Printer } from 'lucide-react';
 import aucaLogo from '@/images/AUCA-logo.png';
 import { QRCodeSVG } from 'qrcode.react';
@@ -7,16 +8,18 @@ import { studentApi, paymentApi } from '@/lib/api';
 export default function ContractDetails() {
   const [data, setData] = useState<any>(null);
   const [penalties, setPenalties] = useState<any[]>([]);
+  const [grantedPermit, setGrantedPermit] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchData = async () => {
     try {
       const studentId = localStorage.getItem('student_id') || '25306';
       
-      const [contractRes, balRes, penaltiesRes] = await Promise.all([
+      const [contractRes, balRes, penaltiesRes, permitsRes] = await Promise.all([
         studentApi.getMyContracts().catch(() => ({ data: { data: [] } })),
         paymentApi.getMyBalance(studentId).catch(() => ({ data: { data: { totalPaid: 0 } } })),
-        studentApi.getMyPenalties().catch(() => ({ data: { data: [] } }))
+        studentApi.getMyPenalties().catch(() => ({ data: { data: [] } })),
+        studentApi.getMyPermits().catch(() => ({ data: { data: [] } }))
       ]);
 
       const contracts: any[] = contractRes.data?.data || [];
@@ -24,6 +27,14 @@ export default function ContractDetails() {
       const prePaid = Number(balRes.data?.data?.totalPaid || balRes.data?.totalPaid || 0);
       
       setPenalties(penaltiesRes.data?.data || []);
+      
+      if (contract) {
+        const permits: any[] = permitsRes.data?.data || [];
+        const foundPermit = permits.find(p => p.termId === contract.termId);
+        if (foundPermit) {
+          setGrantedPermit(foundPermit);
+        }
+      }
 
       setData(contract ? { contract, prePaid } : null);
     } catch {
@@ -142,6 +153,23 @@ export default function ContractDetails() {
             <p className="text-blue-200">Term: {contract.termId} · {contract.semester}</p>
           </div>
         </div>
+
+        {grantedPermit && (
+          <div className="bg-green-50 border border-green-200 p-6 rounded-xl shadow-sm print:hidden">
+            <h2 className="text-xl font-bold text-green-800 flex items-center gap-2">
+              <CheckCircle2 className="w-6 h-6" /> Permit Granted by Staff
+            </h2>
+            <p className="mt-2 text-green-700">
+              You have been granted a <strong>{grantedPermit.permitType || 'FULL'}</strong> exam permit by <strong>{grantedPermit.grantedBy}</strong>.
+            </p>
+            <div className="mt-4 p-4 bg-white rounded-lg border border-green-100 italic text-gray-700 text-sm shadow-sm">
+              "{grantedPermit.grantReason}"
+            </div>
+            <Link to="/my-exam-permit" className="mt-4 inline-block bg-green-700 hover:bg-green-800 text-white px-6 py-2 rounded-lg font-bold transition-colors">
+              View & Print Permit Card
+            </Link>
+          </div>
+        )}
 
         <div className="bg-white rounded-xl shadow-sm border p-6 sm:p-8">
           <h2 className="text-lg font-bold flex items-center gap-2 mb-6"><TrendingUp className="text-blue-600" /> Financial Progress</h2>

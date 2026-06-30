@@ -8,7 +8,7 @@ import { format } from 'date-fns';
 import aucaLogo from '@/images/AUCA-logo.png';
 
 export default function StaffReports() {
-  const [activeTab, setActiveTab] = useState<'payments' | 'contracts' | 'penalties'>('payments');
+  const [activeTab, setActiveTab] = useState<'payments' | 'contracts' | 'penalties' | 'examPermits'>('payments');
   const [studentIdFilter, setStudentIdFilter] = useState('');
   const [debouncedFilter, setDebouncedFilter] = useState('');
 
@@ -24,6 +24,7 @@ export default function StaffReports() {
   // Data states
   const [payments, setPayments] = useState<any[]>([]);
   const [contracts, setContracts] = useState<any[]>([]);
+  const [examPermits, setExamPermits] = useState<any[]>([]);
   const [penalties, setPenalties] = useState<any[]>([]);
   const [studentDepartments, setStudentDepartments] = useState<Record<string, string>>({});
 
@@ -200,6 +201,40 @@ export default function StaffReports() {
         }
 
         setPayments(fetchedInstallments);
+      } else if (activeTab === 'examPermits') {
+        const res = await staffApi.getExamPermits(0, 100, 'createdAt', 'desc');
+        let fetchedPermits = res.data.content || [];
+        if (debouncedFilter) {
+          const q = debouncedFilter.toLowerCase();
+          fetchedPermits = fetchedPermits.filter((p: any) =>
+            (p.studentId && p.studentId.toLowerCase().includes(q)) ||
+            (p.studentName && p.studentName.toLowerCase().includes(q))
+          );
+        }
+
+        await loadDepartmentsForStudents(fetchedPermits.map((p: any) => p.studentId));
+
+        if (departmentFilter) {
+          const q = departmentFilter.toLowerCase();
+          fetchedPermits = fetchedPermits.filter((p: any) => {
+            const dept = studentDepartments[p.studentId] || '';
+            return dept.toLowerCase().includes(q);
+          });
+        }
+        if (academicYearFilter) {
+          const q = academicYearFilter.toLowerCase();
+          fetchedPermits = fetchedPermits.filter((p: any) =>
+            (p.termId && p.termId.toLowerCase().includes(q))
+          );
+        }
+        if (dateFilter) {
+          fetchedPermits = fetchedPermits.filter((p: any) => {
+            const date = p.createdAt || '';
+            return date.startsWith(dateFilter);
+          });
+        }
+
+        setExamPermits(fetchedPermits);
       }
     } catch (err) {
       console.error('Error fetching report data:', err);
@@ -274,6 +309,7 @@ export default function StaffReports() {
           {activeTab === 'payments' && 'Payment History Report'}
           {activeTab === 'contracts' && 'Contracts Taken Report'}
           {activeTab === 'penalties' && 'Penalties Provided Report'}
+          {activeTab === 'examPermits' && 'Exam Permits Granted Report'}
         </p>
         {debouncedFilter && <p className="text-sm font-bold mt-1 text-gray-800">Filtered by Student ID: {debouncedFilter}</p>}
       </div>
@@ -299,6 +335,12 @@ export default function StaffReports() {
               className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'penalties' ? 'bg-white shadow-sm text-blue-700' : 'text-gray-600 hover:text-gray-900'}`}
             >
               Penalties Provided
+            </button>
+            <button
+              onClick={() => setActiveTab('examPermits')}
+              className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'examPermits' ? 'bg-white shadow-sm text-blue-700' : 'text-gray-600 hover:text-gray-900'}`}
+            >
+              Exam Permits Granted
             </button>
           </div>
 
@@ -459,8 +501,6 @@ export default function StaffReports() {
                     <th className="px-6 py-4">Department</th>
                     <th className="px-6 py-4">Term</th>
                     <th className="px-6 py-4">Total Fees</th>
-                    <th className="px-6 py-4">Permit Granted</th>
-                    <th className="px-6 py-4">Reason</th>
                     <th className="px-6 py-4">Signed Date</th>
                     <th className="px-6 py-4">Status</th>
                   </tr>
@@ -476,8 +516,6 @@ export default function StaffReports() {
                         <td className="px-6 py-3 text-gray-600 print:text-black">{studentDepartments[c.studentId] || '-'}</td>
                         <td className="px-6 py-3 text-gray-600 print:text-black">{c.termId}</td>
                         <td className="px-6 py-3 font-medium text-gray-900 print:text-black">{formatCurrency(c.totalFees)}</td>
-                        <td className="px-6 py-3 text-gray-600 print:text-black">{c.permitType ? <span className="text-green-600 font-medium print:text-black">Yes ({c.permitType})</span> : 'No'}</td>
-                        <td className="px-6 py-3 text-gray-600 print:text-black max-w-[150px] truncate print:max-w-none print:whitespace-normal" title={c.grantReason}>{c.grantReason || '-'}</td>
                         <td className="px-6 py-3 text-gray-600 print:text-black">{formatDate(c.createdAt)}</td>
                         <td className="px-6 py-3 print:hidden">{getStatusBadge(c.status)}</td>
                         <td className="px-6 py-3 hidden print:table-cell">{c.status}</td>
@@ -521,6 +559,43 @@ export default function StaffReports() {
                 </tbody>
               </table>
             )}
+
+            {/* EXAM PERMITS TABLE */}
+            {activeTab === 'examPermits' && (
+              <table className="w-full text-left text-sm whitespace-nowrap print:whitespace-normal print:text-xs">
+                <thead className="bg-gray-50 text-gray-600 font-semibold border-b border-gray-200 print:bg-white print:border-b-2 print:border-gray-800 print:text-black">
+                  <tr>
+                    <th className="px-6 py-4">Student ID</th>
+                    <th className="px-6 py-4">Student Name</th>
+                    <th className="px-6 py-4">Department</th>
+                    <th className="px-6 py-4">Term</th>
+                    <th className="px-6 py-4">Permit Type</th>
+                    <th className="px-6 py-4">Granted By</th>
+                    <th className="px-6 py-4">Reason</th>
+                    <th className="px-6 py-4">Date Granted</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 print:divide-gray-300">
+                  {examPermits.length === 0 ? (
+                    <tr><td colSpan={8} className="px-6 py-8 text-center text-gray-500">No exam permits found.</td></tr>
+                  ) : (
+                    examPermits.map((p, idx) => (
+                      <tr key={p.id || idx} className="hover:bg-gray-50 print:hover:bg-transparent">
+                        <td className="px-6 py-3 font-medium text-blue-600 print:text-black">{p.studentId}</td>
+                        <td className="px-6 py-3 text-gray-900 print:text-black">{p.studentName}</td>
+                        <td className="px-6 py-3 text-gray-600 print:text-black">{studentDepartments[p.studentId] || '-'}</td>
+                        <td className="px-6 py-3 text-gray-600 print:text-black">{p.termId}</td>
+                        <td className="px-6 py-3 font-medium text-green-600 print:text-black">{p.permitType}</td>
+                        <td className="px-6 py-3 text-gray-900 print:text-black">{p.grantedBy}</td>
+                        <td className="px-6 py-3 text-gray-600 print:text-black max-w-[200px] truncate print:max-w-none print:whitespace-normal" title={p.grantReason}>{p.grantReason}</td>
+                        <td className="px-6 py-3 text-gray-600 print:text-black">{formatDate(p.createdAt)}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            )}
+
           </div>
         )}
       </div>

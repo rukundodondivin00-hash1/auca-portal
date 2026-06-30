@@ -146,6 +146,7 @@ export const studentApi = {
   },
   createContract: (payload: any) => contractApi.post('/api/contracts', payload),
   getMyContracts: () => contractApi.get('/api/contracts/my-contracts'),
+  getMyPermits: () => contractApi.get('/api/contracts/my-permits'),
   getMyPenalties: () => contractApi.get('/api/contracts/my-penalties'),
   getTermConfig: async (termId: string) => {
     const res = await contractApi.get('/api/contracts/term-config');
@@ -250,6 +251,8 @@ export const staffApi = {
     contractApi.patch(`/api/staff/contracts/${id}/status`, data),
   grantPermit: (data: { studentId: string; permitType: string; reason: string }) =>
     contractApi.post(`/api/staff/contracts/grant-permit`, data),
+  getExamPermits: (page = 0, size = 20, sortBy = 'createdAt', direction = 'desc') =>
+    contractApi.get<PaginatedResponse<any>>('/api/staff/permits', { params: { page, size, sortBy, direction } }),
 
   deleteContract: (id: string) =>
     contractApi.delete(`/api/staff/contracts/${id}`),
