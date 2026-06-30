@@ -248,6 +248,8 @@ export const staffApi = {
 
   updateContractStatus: (id: string, data: ContractStatusUpdate) =>
     contractApi.patch(`/api/staff/contracts/${id}/status`, data),
+  grantPermit: (data: { studentId: string; permitType: string; reason: string }) =>
+    contractApi.post(`/api/staff/contracts/grant-permit`, data),
 
   deleteContract: (id: string) =>
     contractApi.delete(`/api/staff/contracts/${id}`),

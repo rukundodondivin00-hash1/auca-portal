@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Printer, AlertTriangle, Upload, Loader2 } from 'lucide-react';
+import { Printer, AlertTriangle, Loader2, Upload, CheckCircle } from 'lucide-react';
 import { studentApi, paymentApi, registrationApi } from '@/lib/api';
 import aucaLogo from '@/images/AUCA-logo.png';
 import { QRCodeSVG } from 'qrcode.react';
@@ -26,6 +26,7 @@ interface PermitData {
 export default function MyExamPermit() {
   const [loading, setLoading] = useState(true);
   const [permitStatus, setPermitStatus] = useState<'FULL' | 'PARTIAL' | 'NONE'>('NONE');
+  const [grantedInfo, setGrantedInfo] = useState<{ grantedBy: string; grantReason: string; permitType: string } | null>(null);
   const [permitData, setPermitData] = useState<PermitData | null>(null);
   
   const studentId = localStorage.getItem('student_id') || '25306';
@@ -92,21 +93,37 @@ export default function MyExamPermit() {
           const contracts: any[] = contractRes.data?.data || [];
           
           if (contracts.length > 0) {
-            const c = contracts[0];
-            const installPaid = (c.installments || []).reduce((s: number, i: any) => s + (i.amountPaid || 0), 0);
-            paidAmount = currentPrePaid + installPaid;
+            // Check if any contract is a granted permit
+            const grantedContract = contracts.find((c: any) => c.grantedBy && c.grantReason);
+            if (grantedContract) {
+              setGrantedInfo({
+                grantedBy: grantedContract.grantedBy,
+                grantReason: grantedContract.grantReason,
+                permitType: grantedContract.permitType || 'FULL'
+              });
+              setPermitStatus(grantedContract.permitType || 'FULL');
+            } else {
+              const c = contracts[0];
+              const installPaid = (c.installments || []).reduce((s: number, i: any) => s + (i.amountPaid || 0), 0);
+              paidAmount = currentPrePaid + installPaid;
+              
+              if (paidAmount >= totalFee && totalFee > 0) {
+                setPermitStatus('FULL');
+              } else if (paidAmount >= minRequiredAmount && minRequiredAmount > 0) {
+                setPermitStatus('PARTIAL');
+              } else {
+                setPermitStatus('NONE');
+              }
+            }
           } else {
             paidAmount = currentPrePaid;
-          }
-
-          const minRequiredAmount = (totalFee * initialPaymentPercentage) / 100;
-
-          if (paidAmount >= totalFee && totalFee > 0) {
-            setPermitStatus('FULL');
-          } else if (paidAmount >= minRequiredAmount && minRequiredAmount > 0) {
-            setPermitStatus('PARTIAL');
-          } else {
-            setPermitStatus('NONE');
+            if (paidAmount >= totalFee && totalFee > 0) {
+              setPermitStatus('FULL');
+            } else if (paidAmount >= minRequiredAmount && minRequiredAmount > 0) {
+              setPermitStatus('PARTIAL');
+            } else {
+              setPermitStatus('NONE');
+            }
           }
         } catch {
           setPermitStatus('NONE');
@@ -179,13 +196,27 @@ export default function MyExamPermit() {
         </button>
       </div>
 
-      {permitStatus === 'NONE' && (
+      {permitStatus === 'NONE' && !grantedInfo && (
         <div className="bg-red-50 border border-red-200 p-8 rounded-xl shadow-sm text-center flex flex-col items-center print:hidden">
           <AlertTriangle className="w-16 h-16 text-red-500 mb-4" />
           <h2 className="text-2xl font-bold text-red-700">No Exam Permit Available</h2>
           <p className="mt-2 text-red-600 max-w-lg mx-auto">
             You do not have a valid exam permit. You must pay at least your required initial payment to receive a partial permit, or pay in full for a full permit.
           </p>
+        </div>
+      )}
+
+      {grantedInfo && (
+        <div className="bg-green-50 border border-green-200 p-6 rounded-xl shadow-sm print:hidden">
+          <h2 className="text-xl font-bold text-green-800 flex items-center gap-2">
+            <CheckCircle className="w-6 h-6" /> Permit Granted by Staff
+          </h2>
+          <p className="mt-2 text-green-700">
+            You have been granted a <strong>{grantedInfo.permitType}</strong> exam permit by <strong>{grantedInfo.grantedBy}</strong>.
+          </p>
+          <div className="mt-4 p-4 bg-white rounded-lg border border-green-100 italic text-gray-700 text-sm shadow-sm">
+            "{grantedInfo.grantReason}"
+          </div>
         </div>
       )}
 

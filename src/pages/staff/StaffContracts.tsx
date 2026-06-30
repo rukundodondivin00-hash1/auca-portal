@@ -8,7 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { staffApi } from '@/lib/api';
 import type { Contract } from '@/lib/api';
-import { Search, RefreshCw, Loader2 } from 'lucide-react';
+import { Search, RefreshCw, Loader2, FileBadge } from 'lucide-react';
+import StaffGrantPermitModal from '@/components/staff/StaffGrantPermitModal';
 
 export default function StaffContracts() {
   const [contracts, setContracts] = useState<Contract[]>([]);
@@ -16,6 +17,7 @@ export default function StaffContracts() {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [isPermitModalOpen, setIsPermitModalOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => { fetchContracts(); }, [statusFilter]);
@@ -77,9 +79,14 @@ export default function StaffContracts() {
           <h1 className="text-2xl font-bold">Contract Overview</h1>
           <p className="text-gray-500 mt-1">Live contract data from the database</p>
         </div>
-        <Button variant="outline" onClick={fetchContracts} disabled={loading}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} /> Refresh
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => setIsPermitModalOpen(true)} className="bg-[#00447b] hover:bg-blue-800 text-white shadow-sm">
+            <FileBadge className="h-4 w-4 mr-2" /> Grant Exam Permit
+          </Button>
+          <Button variant="outline" onClick={fetchContracts} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} /> Refresh
+          </Button>
+        </div>
       </div>
 
       {error && (
@@ -206,6 +213,11 @@ export default function StaffContracts() {
           )}
         </CardContent>
       </Card>
+      
+      <StaffGrantPermitModal 
+        isOpen={isPermitModalOpen} 
+        onClose={() => setIsPermitModalOpen(false)} 
+      />
     </div>
   );
 }
