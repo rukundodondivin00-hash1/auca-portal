@@ -3,19 +3,15 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ChevronLeft, Globe, Menu } from 'lucide-react';
 import { contractApi, paymentApi, studentApi, registrationApi } from '@/lib/api';
+import { useSearchParams } from 'react-router';
 
-interface PaymentModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onPaymentSuccess?: () => void;
-  hasActiveContract?: boolean;
-  totalFees?: number;
-  minRequiredAmount?: number;
-}
-
-export default function InitiatePaymentModal({
-  isOpen, onClose, onPaymentSuccess, hasActiveContract, totalFees, minRequiredAmount = 1000
-}: PaymentModalProps) {
+export default function UrubutoPayPage() {
+  const [searchParams] = useSearchParams();
+  const hasActiveContract = searchParams.get('hasActiveContract') === 'true';
+  const minRequiredAmount = 1000;
+  
+  const onClose = () => window.close();
+  const onPaymentSuccess = () => window.close();
   const [paymentAmount, setPaymentAmount] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [channel, setChannel] = useState('MOMO');
@@ -29,7 +25,6 @@ export default function InitiatePaymentModal({
   const studentId = localStorage.getItem('student_id') || '';
 
   useEffect(() => {
-    if (!isOpen) return;
 
     registrationApi.getTerm()
       .then(termRes => {
@@ -59,7 +54,7 @@ export default function InitiatePaymentModal({
         }
       })
       .catch(() => {});
-  }, [isOpen, studentId]);
+  }, [studentId]);
 
   let dynamicMinRequired = minRequiredAmount;
   if (!hasActiveContract && registration && termConfig) {
@@ -121,14 +116,14 @@ export default function InitiatePaymentModal({
     }
   };
 
-  if (!isOpen) return null;
+
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-[#f5f5f5] flex flex-col font-sans h-[100dvh] w-[100vw] overflow-y-auto">
+    <div className="bg-[#f5f5f5] flex flex-col font-sans min-h-screen w-full">
       
       {/* Loading Overlay */}
       {isProcessing && (
-        <div className="fixed inset-0 z-[110] bg-black/50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-2xl p-8 max-w-sm w-full flex flex-col items-center">
             <div className="w-16 h-16 rounded-full border-4 border-gray-200 border-t-[#2b4c9b] animate-spin mb-6"></div>
             <h2 className="text-xl font-medium text-[#2b4c9b] mb-4">Pending Payment</h2>

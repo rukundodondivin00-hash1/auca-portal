@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Wallet, FileText, DollarSign, Loader2, FileSignature } from 'lucide-react';
+import { Wallet, FileText, DollarSign, Loader2, FileSignature, ArrowUpRight } from 'lucide-react';
 import { studentApi, imsApi, paymentApi, registrationApi, contractApi } from '@/lib/api';
-import InitiatePaymentModal from './InitiatePaymentModal';
 import { Link, useNavigate } from 'react-router';
 
 export default function MyFees() {
@@ -12,7 +11,6 @@ export default function MyFees() {
   const [prePaidAmount, setPrePaidAmount] = useState(0);
   const [paymentsHistory, setPaymentsHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate();
 
   const studentId = localStorage.getItem('student_id') || '25306';
@@ -82,23 +80,7 @@ export default function MyFees() {
   const progressPercentage = totalAmount > 0 ? Math.min(Math.round((paymentMade / totalAmount) * 100), 100) : (paymentMade > 0 ? 100 : 0);
 
   const initialPaymentPercentage = termConfig?.initialPaymentPercentage !== undefined ? Number(termConfig.initialPaymentPercentage) : 100;
-  const minRequiredTotal = totalAmount > 0 ? (totalAmount * initialPaymentPercentage / 100) : 0;
   
-  let minPaymentAmount = 1000;
-  if (!contract && minRequiredTotal > 0) {
-    const shortfall = minRequiredTotal - prePaidAmount;
-    if (shortfall > 0) {
-      minPaymentAmount = shortfall;
-    }
-  }
-
-  const handlePaymentSuccess = () => {
-    fetchData();
-    if (!contract && initialPaymentPercentage < 100) {
-      navigate('/contract');
-    }
-  };
-
   return (
     <div className="space-y-6 animate-fade-in-slow">
       <div className="bg-blue-900 text-white p-6 rounded-lg shadow-sm flex justify-between items-center">
@@ -107,7 +89,8 @@ export default function MyFees() {
           <p className="text-blue-100 text-sm mt-1">Track your balance, fee obligations, and payment history</p>
         </div>
         <button
-          onClick={() => setIsModalOpen(true)}
+          type="button"
+          onClick={() => window.open(`/pay-now/initiate?hasActiveContract=${!!contract}`, '_blank')}
           className="inline-flex items-center gap-2 rounded-md bg-white px-4 py-2 text-sm font-semibold text-blue-900 shadow-sm hover:bg-gray-50 cursor-pointer"
         >
           Pay Now
@@ -225,15 +208,6 @@ export default function MyFees() {
           </Link>
         </div>
       )}
-
-      <InitiatePaymentModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onPaymentSuccess={handlePaymentSuccess}
-        hasActiveContract={!!contract}
-        totalFees={totalAmount}
-        minRequiredAmount={minPaymentAmount}
-      />
     </div>
   );
 }

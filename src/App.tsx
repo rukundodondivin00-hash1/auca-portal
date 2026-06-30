@@ -16,6 +16,7 @@ import MyExamPermit from "./components/MyExamPermit";
 import MyBulletin from "./components/MyBulletin"; 
 import Login from "./components/authentication/Login"; 
 import Settings from "./components/Settings";
+import UrubutoPayPage from "./pages/UrubutoPayPage";
 import StaffDashboard from "./pages/staff/StaffDashboard";
 import StaffContracts from "./pages/staff/StaffContracts";
 import StaffContractDetails from "./pages/staff/StaffContractDetails";
@@ -87,6 +88,7 @@ export default function App() {
       <Route path="/" element={<Navigate to={hasToken ? "/student-dashboard" : "/login"} replace />} />
       <Route path="/login" element={<Login />} />
       <Route path="/staff/login" element={<Navigate to="/login" replace />} />
+      <Route path="/pay-now/initiate" element={<UrubutoPayPage />} />
 
       <Route path="/staff/*" element={
         <StaffAuthWrapper>

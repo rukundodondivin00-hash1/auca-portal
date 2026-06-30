@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { ArrowUpRight, FileSignature, Loader2 } from "lucide-react";
 import { Link, useNavigate } from "react-router"; 
-import InitiatePaymentModal from "./InitiatePaymentModal";
 import { useDashboard } from "./DashboardContext";
 
 export default function WelcomeBanner() {
@@ -51,7 +50,7 @@ export default function WelcomeBanner() {
 
             <button
               type="button"
-              onClick={() => setIsModalOpen(true)}
+              onClick={() => window.open(`/pay-now/initiate?hasActiveContract=${hasContract}`, '_blank')}
               className="inline-flex items-center gap-2 rounded-md bg-white px-4 py-2 text-sm font-semibold text-blue-900 shadow-sm transition-colors hover:bg-gray-50 cursor-pointer"
             >
               Pay Now
@@ -60,17 +59,6 @@ export default function WelcomeBanner() {
           </div>
         </div>
       </div>
-
-      <InitiatePaymentModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)}
-        hasActiveContract={hasContract}
-        onPaymentSuccess={() => {
-          if (!hasContract) {
-            navigate('/contract');
-          }
-        }}
-      />
     </div>
   );
 }
