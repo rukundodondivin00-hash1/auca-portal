@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Printer, AlertTriangle, Loader2, Upload, CheckCircle } from 'lucide-react';
+import { Printer, AlertTriangle, Loader2, Upload, CheckCircle, Info } from 'lucide-react';
 import { studentApi, paymentApi, registrationApi } from '@/lib/api';
 import aucaLogo from '@/images/AUCA-logo.png';
 import { QRCodeSVG } from 'qrcode.react';
@@ -83,6 +83,8 @@ export default function MyExamPermit() {
             // Default to 100% if config missing
           }
         }
+
+        const minRequiredAmount = totalFee * (initialPaymentPercentage / 100);
 
         let paidAmount = 0;
         let currentPrePaid = 0;
@@ -243,6 +245,29 @@ export default function MyExamPermit() {
           <div className="mt-4 p-4 bg-white rounded-lg border border-green-100 italic text-gray-700 text-sm shadow-sm">
             "{grantedInfo.grantReason}"
           </div>
+        </div>
+      )}
+
+      {permitStatus === 'PARTIAL' && !grantedInfo && (
+        <div className="bg-blue-50 border border-blue-200 p-6 rounded-xl shadow-sm print:hidden">
+          <h2 className="text-xl font-bold text-blue-800 flex items-center gap-2">
+            <Info className="w-6 h-6" /> Partial Exam Permit
+          </h2>
+          <p className="mt-2 text-blue-700">
+            You have paid your initial payment and are allowed to sit for <strong>mid-term exams only</strong>. 
+            To receive a full exam permit for all exams, please pay your remaining balance in full.
+          </p>
+        </div>
+      )}
+
+      {permitStatus === 'FULL' && !grantedInfo && (
+        <div className="bg-green-50 border border-green-200 p-6 rounded-xl shadow-sm print:hidden">
+          <h2 className="text-xl font-bold text-green-800 flex items-center gap-2">
+            <CheckCircle className="w-6 h-6" /> Full Exam Permit
+          </h2>
+          <p className="mt-2 text-green-700">
+            You have paid your fees in full and are allowed to sit for <strong>all exams</strong>.
+          </p>
         </div>
       )}
 
