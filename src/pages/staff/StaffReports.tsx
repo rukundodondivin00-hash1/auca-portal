@@ -1,25 +1,26 @@
 import { useState, useEffect } from 'react';
 import { staffApi, registrationApi } from '@/lib/api';
-import { 
-  FileText, Search, Loader2, Printer, Filter, AlertCircle, 
+import {
+  FileText, Search, Loader2, Printer, Filter, AlertCircle,
   CheckCircle2, XCircle, Clock
 } from 'lucide-react';
 import { format } from 'date-fns';
+import aucaLogo from '@/images/AUCA-logo.png';
 
 export default function StaffReports() {
   const [activeTab, setActiveTab] = useState<'payments' | 'contracts' | 'penalties'>('payments');
   const [studentIdFilter, setStudentIdFilter] = useState('');
   const [debouncedFilter, setDebouncedFilter] = useState('');
-  
+
   // Advanced filters
   const [balanceFilter, setBalanceFilter] = useState('');
   const [overdueFilter, setOverdueFilter] = useState(false);
   const [departmentFilter, setDepartmentFilter] = useState('');
   const [academicYearFilter, setAcademicYearFilter] = useState('');
   const [dateFilter, setDateFilter] = useState('');
-  
+
   const [loading, setLoading] = useState(false);
-  
+
   // Data states
   const [payments, setPayments] = useState<any[]>([]);
   const [contracts, setContracts] = useState<any[]>([]);
@@ -41,7 +42,7 @@ export default function StaffReports() {
   const loadDepartmentsForStudents = async (studentIds: string[], termId: string = '2025/1') => {
     const uniqueIds = Array.from(new Set(studentIds)).filter(id => id && !studentDepartments[id]);
     if (uniqueIds.length === 0) return;
-    
+
     try {
       const newDepts: Record<string, string> = { ...studentDepartments };
       await Promise.all(
@@ -54,7 +55,7 @@ export default function StaffReports() {
               newDepts[id] = 'Unknown';
             }
           } catch (e) {
-             newDepts[id] = 'Unknown';
+            newDepts[id] = 'Unknown';
           }
         })
       );
@@ -76,17 +77,17 @@ export default function StaffReports() {
           const res = await staffApi.getContracts(0, 100, 'createdAt', 'desc');
           fetchedContracts = res.data.content || [];
         }
-        
+
         // Fetch departments
         await loadDepartmentsForStudents(fetchedContracts.map((c: any) => c.studentId));
-        
+
         // Apply local filters
         if (balanceFilter) {
           const targetBalance = parseFloat(balanceFilter);
           if (!isNaN(targetBalance)) {
-             // Let's filter contracts with balance <= target balance for flexibility, or exact. The user said "a balance of 500K". Let's do exact match or within 1 RWF due to float.
-             // Actually, doing exact match.
-             fetchedContracts = fetchedContracts.filter((c: any) => Math.abs(c.totalFees - (c.totalPaidOnInstallments || 0) - targetBalance) < 1 || Math.abs(c.totalFees - targetBalance) < 1);
+            // Let's filter contracts with balance <= target balance for flexibility, or exact. The user said "a balance of 500K". Let's do exact match or within 1 RWF due to float.
+            // Actually, doing exact match.
+            fetchedContracts = fetchedContracts.filter((c: any) => Math.abs(c.totalFees - (c.totalPaidOnInstallments || 0) - targetBalance) < 1 || Math.abs(c.totalFees - targetBalance) < 1);
           }
         }
         if (overdueFilter) {
@@ -95,24 +96,24 @@ export default function StaffReports() {
         if (departmentFilter) {
           const q = departmentFilter.toLowerCase();
           fetchedContracts = fetchedContracts.filter((c: any) => {
-             const dept = studentDepartments[c.studentId] || '';
-             return dept.toLowerCase().includes(q);
+            const dept = studentDepartments[c.studentId] || '';
+            return dept.toLowerCase().includes(q);
           });
         }
         if (academicYearFilter) {
           const q = academicYearFilter.toLowerCase();
-          fetchedContracts = fetchedContracts.filter((c: any) => 
-            (c.academicYear && c.academicYear.toLowerCase().includes(q)) || 
+          fetchedContracts = fetchedContracts.filter((c: any) =>
+            (c.academicYear && c.academicYear.toLowerCase().includes(q)) ||
             (c.termId && c.termId.toLowerCase().includes(q))
           );
         }
         if (dateFilter) {
           fetchedContracts = fetchedContracts.filter((c: any) => {
-             const date = c.createdAt || '';
-             return date.startsWith(dateFilter);
+            const date = c.createdAt || '';
+            return date.startsWith(dateFilter);
           });
         }
-        
+
         setContracts(fetchedContracts);
 
       } else if (activeTab === 'penalties') {
@@ -120,72 +121,84 @@ export default function StaffReports() {
         let fetchedPenalties = res.data.content || [];
         if (debouncedFilter) {
           const q = debouncedFilter.toLowerCase();
-          fetchedPenalties = fetchedPenalties.filter((p: any) => 
-            (p.studentId && p.studentId.toLowerCase().includes(q)) || 
+          fetchedPenalties = fetchedPenalties.filter((p: any) =>
+            (p.studentId && p.studentId.toLowerCase().includes(q)) ||
             (p.studentName && p.studentName.toLowerCase().includes(q))
           );
         }
-        
+
         await loadDepartmentsForStudents(fetchedPenalties.map((p: any) => p.studentId));
         if (departmentFilter) {
           const q = departmentFilter.toLowerCase();
           fetchedPenalties = fetchedPenalties.filter((p: any) => {
-             const dept = studentDepartments[p.studentId] || '';
-             return dept.toLowerCase().includes(q);
+            const dept = studentDepartments[p.studentId] || '';
+            return dept.toLowerCase().includes(q);
           });
         }
         if (academicYearFilter) {
           const q = academicYearFilter.toLowerCase();
-          fetchedPenalties = fetchedPenalties.filter((p: any) => 
-            (p.academicYear && p.academicYear.toLowerCase().includes(q)) || 
+          fetchedPenalties = fetchedPenalties.filter((p: any) =>
+            (p.academicYear && p.academicYear.toLowerCase().includes(q)) ||
             (p.termId && p.termId.toLowerCase().includes(q))
           );
         }
         if (dateFilter) {
           fetchedPenalties = fetchedPenalties.filter((p: any) => {
-             const date = p.createdAt || '';
-             return date.startsWith(dateFilter);
+            const date = p.createdAt || '';
+            return date.startsWith(dateFilter);
           });
         }
+        if (balanceFilter) {
+          const targetBalance = parseFloat(balanceFilter);
+          if (!isNaN(targetBalance)) {
+            fetchedPenalties = fetchedPenalties.filter((p: any) => Math.abs((p.newAmount || 0) - targetBalance) < 1 || Math.abs((p.penaltyAmount || 0) - targetBalance) < 1);
+          }
+        }
         setPenalties(fetchedPenalties);
-        
+
       } else if (activeTab === 'payments') {
         const res = await staffApi.getInstallments(0, 100);
         let fetchedInstallments = res.data.content || [];
         if (debouncedFilter) {
           const q = debouncedFilter.toLowerCase();
-          fetchedInstallments = fetchedInstallments.filter((i: any) => 
-            (i.studentId && i.studentId.toLowerCase().includes(q)) || 
+          fetchedInstallments = fetchedInstallments.filter((i: any) =>
+            (i.studentId && i.studentId.toLowerCase().includes(q)) ||
             (i.studentName && i.studentName.toLowerCase().includes(q))
           );
         }
-        
+
         await loadDepartmentsForStudents(fetchedInstallments.map((i: any) => i.studentId));
-        
+
         if (overdueFilter) {
           fetchedInstallments = fetchedInstallments.filter((i: any) => i.status === 'OVERDUE');
         }
         if (departmentFilter) {
           const q = departmentFilter.toLowerCase();
           fetchedInstallments = fetchedInstallments.filter((i: any) => {
-             const dept = studentDepartments[i.studentId] || '';
-             return dept.toLowerCase().includes(q);
+            const dept = studentDepartments[i.studentId] || '';
+            return dept.toLowerCase().includes(q);
           });
         }
         if (academicYearFilter) {
           const q = academicYearFilter.toLowerCase();
-          fetchedInstallments = fetchedInstallments.filter((i: any) => 
-            (i.academicYear && i.academicYear.toLowerCase().includes(q)) || 
+          fetchedInstallments = fetchedInstallments.filter((i: any) =>
+            (i.academicYear && i.academicYear.toLowerCase().includes(q)) ||
             (i.termId && i.termId.toLowerCase().includes(q))
           );
         }
         if (dateFilter) {
           fetchedInstallments = fetchedInstallments.filter((i: any) => {
-             const date = i.paidAt || i.dueDate || i.createdAt || '';
-             return date.startsWith(dateFilter);
+            const date = i.paidAt || i.dueDate || i.createdAt || '';
+            return date.startsWith(dateFilter);
           });
         }
-        
+        if (balanceFilter) {
+          const targetBalance = parseFloat(balanceFilter);
+          if (!isNaN(targetBalance)) {
+            fetchedInstallments = fetchedInstallments.filter((i: any) => Math.abs((i.amount || 0) - targetBalance) < 1);
+          }
+        }
+
         setPayments(fetchedInstallments);
       }
     } catch (err) {
@@ -213,7 +226,7 @@ export default function StaffReports() {
   };
 
   const getStatusBadge = (status: string) => {
-    switch(status) {
+    switch (status) {
       case 'PAID':
       case 'ACTIVE':
       case 'COMPLETED':
@@ -232,14 +245,20 @@ export default function StaffReports() {
   };
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto pb-12 animate-fade-in print:max-w-none print:m-0 print:p-0 print:space-y-4">
+    <div className="space-y-6 max-w-6xl mx-auto pb-12 animate-fade-in print:max-w-none print:m-0 print:p-8 print:space-y-4">
+      <style type="text/css" media="print">
+        {`
+          @page { size: landscape; margin: 0; }
+          body { -webkit-print-color-adjust: exact; background-color: white !important; }
+        `}
+      </style>
       {/* Header - Hides on print to replace with a cleaner print header */}
       <div className="bg-[#00447b] text-white p-6 rounded-lg shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 print:hidden">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2"><FileText size={24} /> System Reports</h1>
           <p className="text-blue-100 text-sm mt-1">View and print student financial records</p>
         </div>
-        <button 
+        <button
           onClick={handlePrint}
           className="bg-white text-[#00447b] px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-blue-50 transition-colors shadow-sm"
         >
@@ -248,7 +267,8 @@ export default function StaffReports() {
       </div>
 
       {/* Print-only Header */}
-      <div className="hidden print:block text-center border-b-2 border-[#00447b] pb-4 mb-6">
+      <div className="hidden print:flex flex-col items-center justify-center text-center border-b-2 border-[#00447b] pb-4 mb-6">
+        <img src={aucaLogo} alt="AUCA Logo" className="h-16 mb-2" />
         <h1 className="text-2xl font-bold text-[#00447b] uppercase">AUCA Financial Report</h1>
         <p className="text-gray-500 font-medium mt-1">
           {activeTab === 'payments' && 'Payment History Report'}
@@ -256,26 +276,25 @@ export default function StaffReports() {
           {activeTab === 'penalties' && 'Penalties Provided Report'}
         </p>
         {debouncedFilter && <p className="text-sm font-bold mt-1 text-gray-800">Filtered by Student ID: {debouncedFilter}</p>}
-        <p className="text-xs text-gray-400 mt-1">Generated on: {format(new Date(), 'PPpp')}</p>
       </div>
 
       {/* Filters & Tabs */}
       <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col gap-4 print:hidden">
         <div className="flex flex-col lg:flex-row justify-between gap-4">
           <div className="flex bg-gray-100 p-1 rounded-lg w-fit">
-            <button 
+            <button
               onClick={() => setActiveTab('payments')}
               className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'payments' ? 'bg-white shadow-sm text-blue-700' : 'text-gray-600 hover:text-gray-900'}`}
             >
               Payment History
             </button>
-            <button 
+            <button
               onClick={() => setActiveTab('contracts')}
               className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'contracts' ? 'bg-white shadow-sm text-blue-700' : 'text-gray-600 hover:text-gray-900'}`}
             >
               Contracts Taken
             </button>
-            <button 
+            <button
               onClick={() => setActiveTab('penalties')}
               className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'penalties' ? 'bg-white shadow-sm text-blue-700' : 'text-gray-600 hover:text-gray-900'}`}
             >
@@ -295,7 +314,7 @@ export default function StaffReports() {
               className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg w-full text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
             />
             {studentIdFilter && (
-              <button 
+              <button
                 onClick={() => setStudentIdFilter('')}
                 className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
               >
@@ -311,7 +330,7 @@ export default function StaffReports() {
             <Filter size={16} />
             <span className="text-sm font-medium">Advanced Filters:</span>
           </div>
-          
+
           <div className="flex flex-col gap-1 w-48">
             <label className="text-xs text-gray-500 font-medium">Department</label>
             <input
@@ -323,18 +342,16 @@ export default function StaffReports() {
             />
           </div>
 
-          {(activeTab === 'contracts' || activeTab === 'payments') && (
-            <div className="flex flex-col gap-1 w-32">
-              <label className="text-xs text-gray-500 font-medium">Balance (exact)</label>
-              <input
-                type="number"
-                placeholder="e.g. 500000"
-                value={balanceFilter}
-                onChange={(e) => setBalanceFilter(e.target.value)}
-                className="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-              />
-            </div>
-          )}
+          <div className="flex flex-col gap-1 w-32">
+            <label className="text-xs text-gray-500 font-medium">Balance (exact)</label>
+            <input
+              type="number"
+              placeholder="e.g. 500000"
+              value={balanceFilter}
+              onChange={(e) => setBalanceFilter(e.target.value)}
+              className="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            />
+          </div>
 
           <div className="flex flex-col gap-1 w-32">
             <label className="text-xs text-gray-500 font-medium">Academic Year</label>
@@ -369,7 +386,7 @@ export default function StaffReports() {
               Show Overdue Only
             </label>
           </div>
-          
+
           {(departmentFilter || balanceFilter || overdueFilter || academicYearFilter || dateFilter) && (
             <button
               onClick={() => {
@@ -389,7 +406,7 @@ export default function StaffReports() {
 
       {/* Data Table Container */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden print:shadow-none print:border-none">
-        
+
         {loading ? (
           <div className="p-12 flex flex-col items-center justify-center text-gray-500">
             <Loader2 className="h-8 w-8 animate-spin text-blue-600 mb-4" />
@@ -399,11 +416,12 @@ export default function StaffReports() {
           <div className="overflow-x-auto">
             {/* PAYMENTS TABLE */}
             {activeTab === 'payments' && (
-              <table className="w-full text-left text-sm whitespace-nowrap">
+              <table className="w-full text-left text-sm whitespace-nowrap print:whitespace-normal print:text-xs">
                 <thead className="bg-gray-50 text-gray-600 font-semibold border-b border-gray-200 print:bg-white print:border-b-2 print:border-gray-800 print:text-black">
                   <tr>
                     <th className="px-6 py-4">Student ID</th>
                     <th className="px-6 py-4">Student Name</th>
+                    <th className="px-6 py-4">Department</th>
                     <th className="px-6 py-4">Installment</th>
                     <th className="px-6 py-4">Amount</th>
                     <th className="px-6 py-4">Status</th>
@@ -412,12 +430,13 @@ export default function StaffReports() {
                 </thead>
                 <tbody className="divide-y divide-gray-100 print:divide-gray-300">
                   {payments.length === 0 ? (
-                    <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-500">No payment records found.</td></tr>
+                    <tr><td colSpan={7} className="px-6 py-8 text-center text-gray-500">No payment records found.</td></tr>
                   ) : (
                     payments.map((p, idx) => (
                       <tr key={p.id || idx} className="hover:bg-gray-50 print:hover:bg-transparent">
                         <td className="px-6 py-3 font-medium text-blue-600 print:text-black">{p.studentId || '-'}</td>
                         <td className="px-6 py-3 text-gray-900 print:text-black">{p.studentName || '-'}</td>
+                        <td className="px-6 py-3 text-gray-600 print:text-black">{studentDepartments[p.studentId] || '-'}</td>
                         <td className="px-6 py-3 text-gray-600 print:text-black">Inst. #{p.installmentNumber}</td>
                         <td className="px-6 py-3 font-medium text-gray-900 print:text-black">{formatCurrency(p.amount)}</td>
                         <td className="px-6 py-3 print:hidden">{getStatusBadge(p.status)}</td>
@@ -432,11 +451,12 @@ export default function StaffReports() {
 
             {/* CONTRACTS TABLE */}
             {activeTab === 'contracts' && (
-              <table className="w-full text-left text-sm whitespace-nowrap">
+              <table className="w-full text-left text-sm whitespace-nowrap print:whitespace-normal print:text-xs">
                 <thead className="bg-gray-50 text-gray-600 font-semibold border-b border-gray-200 print:bg-white print:border-b-2 print:border-gray-800 print:text-black">
                   <tr>
                     <th className="px-6 py-4">Student ID</th>
                     <th className="px-6 py-4">Student Name</th>
+                    <th className="px-6 py-4">Department</th>
                     <th className="px-6 py-4">Term</th>
                     <th className="px-6 py-4">Total Fees</th>
                     <th className="px-6 py-4">Signed Date</th>
@@ -445,12 +465,13 @@ export default function StaffReports() {
                 </thead>
                 <tbody className="divide-y divide-gray-100 print:divide-gray-300">
                   {contracts.length === 0 ? (
-                    <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-500">No contracts found.</td></tr>
+                    <tr><td colSpan={7} className="px-6 py-8 text-center text-gray-500">No contracts found.</td></tr>
                   ) : (
                     contracts.map((c, idx) => (
                       <tr key={c.id || idx} className="hover:bg-gray-50 print:hover:bg-transparent">
                         <td className="px-6 py-3 font-medium text-blue-600 print:text-black">{c.studentId}</td>
                         <td className="px-6 py-3 text-gray-900 print:text-black">{c.studentName}</td>
+                        <td className="px-6 py-3 text-gray-600 print:text-black">{studentDepartments[c.studentId] || '-'}</td>
                         <td className="px-6 py-3 text-gray-600 print:text-black">{c.termId}</td>
                         <td className="px-6 py-3 font-medium text-gray-900 print:text-black">{formatCurrency(c.totalFees)}</td>
                         <td className="px-6 py-3 text-gray-600 print:text-black">{formatDate(c.createdAt)}</td>
@@ -465,11 +486,12 @@ export default function StaffReports() {
 
             {/* PENALTIES TABLE */}
             {activeTab === 'penalties' && (
-              <table className="w-full text-left text-sm whitespace-nowrap">
+              <table className="w-full text-left text-sm whitespace-nowrap print:whitespace-normal print:text-xs">
                 <thead className="bg-gray-50 text-gray-600 font-semibold border-b border-gray-200 print:bg-white print:border-b-2 print:border-gray-800 print:text-black">
                   <tr>
                     <th className="px-6 py-4">Student ID</th>
                     <th className="px-6 py-4">Student Name</th>
+                    <th className="px-6 py-4">Department</th>
                     <th className="px-6 py-4">Penalty Amount</th>
                     <th className="px-6 py-4">Reason</th>
                     <th className="px-6 py-4">Total Due</th>
@@ -478,12 +500,13 @@ export default function StaffReports() {
                 </thead>
                 <tbody className="divide-y divide-gray-100 print:divide-gray-300">
                   {penalties.length === 0 ? (
-                    <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-500">No penalty records found.</td></tr>
+                    <tr><td colSpan={7} className="px-6 py-8 text-center text-gray-500">No penalty records found.</td></tr>
                   ) : (
                     penalties.map((p, idx) => (
                       <tr key={p.id || idx} className="hover:bg-gray-50 print:hover:bg-transparent">
                         <td className="px-6 py-3 font-medium text-blue-600 print:text-black">{p.studentId || '-'}</td>
                         <td className="px-6 py-3 text-gray-900 print:text-black">{p.studentName || '-'}</td>
+                        <td className="px-6 py-3 text-gray-600 print:text-black">{studentDepartments[p.studentId] || '-'}</td>
                         <td className="px-6 py-3 font-medium text-red-600 print:text-black">{formatCurrency(p.penaltyAmount)}</td>
                         <td className="px-6 py-3 text-gray-600 print:text-black max-w-xs truncate" title={p.reason}>{p.reason}</td>
                         <td className="px-6 py-3 text-gray-900 print:text-black font-semibold">{formatCurrency(p.newAmount)}</td>
@@ -497,9 +520,22 @@ export default function StaffReports() {
           </div>
         )}
       </div>
-      
-      <div className="hidden print:block mt-8 text-center text-sm text-gray-500">
-        --- End of Report ---
+      <div className="hidden print:block mt-12">
+        <div className="flex justify-between items-end">
+          <div>
+            <p className="text-gray-500 text-sm mb-8">Generated by Finance</p>
+            <div className="border-t border-black w-48 pt-1">
+              <p className="text-sm font-bold text-center">Signature</p>
+            </div>
+          </div>
+          <div>
+            <p className="text-gray-500 text-sm mb-8">Date</p>
+            <div className="border-t border-black w-48 pt-1">
+              <p className="text-sm font-bold text-center">{format(new Date(), 'PP')}</p>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   );

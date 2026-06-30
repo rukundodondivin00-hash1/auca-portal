@@ -24,7 +24,7 @@ export default function StaffSidebar() {
 
   return (
     <aside 
-      className={`relative h-screen bg-white border-r border-gray-200 transition-all duration-300 z-40 flex flex-col shrink-0 ${isExpanded ? 'w-64' : 'w-20'}`}
+      className={`relative h-screen bg-white border-r border-gray-200 transition-all duration-300 z-40 flex flex-col shrink-0 print:hidden ${isExpanded ? 'w-64' : 'w-20'}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
