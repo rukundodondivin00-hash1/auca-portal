@@ -219,65 +219,68 @@ export default function StaffGrantPermitModal({ isOpen, onClose }: StaffGrantPer
             <DialogTitle className="text-2xl font-bold">Grant Exam Permit</DialogTitle>
           </DialogHeader>
 
-          <div className="flex gap-4 items-end bg-blue-50 p-4 rounded-lg border border-blue-100">
-            <div className="flex-1">
-              <Label htmlFor="searchId" className="mb-2 block text-blue-900">Search Student ID</Label>
-              <div className="flex gap-2">
+          {/* Row 1: Search + Permit Type + Grant button */}
+          <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 flex flex-wrap gap-2 items-end">
+            {/* Search */}
+            <div className="flex-1 min-w-[140px]">
+              <Label htmlFor="searchId" className="mb-1 block text-blue-900 text-xs">Student ID</Label>
+              <div className="flex gap-1">
                 <Input 
                   id="searchId" 
                   placeholder="e.g. 25306" 
                   value={searchId}
                   onChange={(e) => setSearchId(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                  className="bg-white"
+                  className="bg-white h-8 text-sm"
                 />
-                <Button onClick={handleSearch} disabled={loading || !searchId} className="bg-blue-900 hover:bg-blue-800">
+                <Button onClick={handleSearch} disabled={loading || !searchId} size="sm" className="bg-blue-900 hover:bg-blue-800 h-8 px-2">
                   {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                 </Button>
               </div>
             </div>
-            
+
+            {/* Permit Type */}
             {permitData && (
-              <div className="w-64">
-                <Label className="mb-2 block text-blue-900">Permit Type</Label>
+              <div className="min-w-[160px]">
+                <Label className="mb-1 block text-blue-900 text-xs">Permit Type</Label>
                 <Select value={permitStatus} onValueChange={(val: any) => setPermitStatus(val)}>
-                  <SelectTrigger className="bg-white">
+                  <SelectTrigger className="bg-white h-8 text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="FULL">FULL - All Exams</SelectItem>
-                    <SelectItem value="PARTIAL">PARTIAL - Mid-term Only</SelectItem>
+                    <SelectItem value="FULL">FULL – All Exams</SelectItem>
+                    <SelectItem value="PARTIAL">PARTIAL – Mid-term</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             )}
 
+            {/* Grant Button */}
             {permitData && (
-              <div className="flex flex-col gap-2">
-                <Button onClick={handleGrantAndPrint} disabled={isGranting} className="bg-green-600 hover:bg-green-700 whitespace-nowrap">
-                  {isGranting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Printer className="w-4 h-4 mr-2" />} 
-                  Grant & Print Permit
-                </Button>
-              </div>
+              <Button onClick={handleGrantAndPrint} disabled={isGranting} size="sm" className="bg-green-600 hover:bg-green-700 h-8 text-xs px-3 whitespace-nowrap">
+                {isGranting ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Printer className="w-3 h-3 mr-1" />}
+                Grant &amp; Print
+              </Button>
             )}
           </div>
-          
+
+          {/* Row 2: Reason (only after student found) */}
           {permitData && (
-            <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-              <Label htmlFor="grantReason" className="mb-2 block text-blue-900">Reason for Granting (Required)</Label>
+            <div className="bg-blue-50 px-3 py-2 rounded-lg border border-blue-100">
+              <Label htmlFor="grantReason" className="mb-1 block text-blue-900 text-xs">Reason for Granting (Required)</Label>
               <textarea 
                 id="grantReason" 
                 value={grantReason}
                 onChange={(e) => setGrantReason(e.target.value)}
                 placeholder="e.g. Cleared by Vice Chancellor, Missing bank slip, etc." 
-                className="w-full rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[60px]"
+                className="w-full rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] resize-none"
               />
             </div>
           )}
 
           {error && (
-            <div className="p-4 bg-red-50 text-red-700 rounded-md border border-red-200 flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5" />
+            <div className="p-3 bg-red-50 text-red-700 rounded-md border border-red-200 flex items-center gap-2 text-sm">
+              <AlertTriangle className="w-4 h-4" />
               {error}
             </div>
           )}
