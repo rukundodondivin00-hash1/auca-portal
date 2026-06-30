@@ -332,18 +332,12 @@ export default function StaffGrantPermitModal({ isOpen, onClose }: StaffGrantPer
                     <div className="bg-[#e6f0ff] p-1.5 border-r border-black print:bg-[#e6f0ff] print:!bg-[#e6f0ff]">Programme</div>
                     <div className="p-1.5 font-normal">{permitData.program}</div>
                   </div>
-                  <div className="grid grid-cols-[130px_1fr] border-b border-black text-xs font-bold">
+                  <div className="grid grid-cols-[130px_1fr] text-xs font-bold">
                     <div className="bg-[#e6f0ff] p-1.5 border-r border-black print:bg-[#e6f0ff] print:!bg-[#e6f0ff]">Permit Status</div>
                     <div className="p-1.5 font-bold text-blue-900">
                       {permitStatus === 'FULL' ? 'FULL - Allowed to sit for all exams' : 'PARTIAL - Allowed to sit for mid-term exams'}
                     </div>
                   </div>
-                  {grantReason && (
-                    <div className="grid grid-cols-[130px_1fr] text-xs font-bold">
-                      <div className="bg-[#fff3cd] p-1.5 border-r border-black">Granted By / Reason</div>
-                      <div className="p-1.5 font-normal italic text-amber-800">{grantReason}</div>
-                    </div>
-                  )}
                 </div>
 
                 {/* Courses Table */}

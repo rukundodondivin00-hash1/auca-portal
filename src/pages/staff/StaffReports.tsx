@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { staffApi } from '@/lib/api';
+import { staffApi, registrationApi } from '@/lib/api';
 import { 
   FileText, Search, Loader2, Printer, Filter, AlertCircle, 
   CheckCircle2, XCircle, Clock
@@ -10,12 +10,20 @@ export default function StaffReports() {
   const [activeTab, setActiveTab] = useState<'payments' | 'contracts' | 'penalties'>('payments');
   const [studentIdFilter, setStudentIdFilter] = useState('');
   const [debouncedFilter, setDebouncedFilter] = useState('');
+  
+  // Advanced filters
+  const [balanceFilter, setBalanceFilter] = useState('');
+  const [overdueFilter, setOverdueFilter] = useState(false);
+  const [departmentFilter, setDepartmentFilter] = useState('');
+  const [academicYearFilter, setAcademicYearFilter] = useState('');
+  
   const [loading, setLoading] = useState(false);
   
   // Data states
   const [payments, setPayments] = useState<any[]>([]);
   const [contracts, setContracts] = useState<any[]>([]);
   const [penalties, setPenalties] = useState<any[]>([]);
+  const [studentDepartments, setStudentDepartments] = useState<Record<string, string>>({});
 
   // Add debounce to the filter
   useEffect(() => {
@@ -27,20 +35,79 @@ export default function StaffReports() {
 
   useEffect(() => {
     fetchData();
-  }, [activeTab, debouncedFilter]);
+  }, [activeTab, debouncedFilter, balanceFilter, overdueFilter, departmentFilter, academicYearFilter]);
+
+  const loadDepartmentsForStudents = async (studentIds: string[], termId: string = '2025/1') => {
+    const uniqueIds = Array.from(new Set(studentIds)).filter(id => id && !studentDepartments[id]);
+    if (uniqueIds.length === 0) return;
+    
+    try {
+      const newDepts: Record<string, string> = { ...studentDepartments };
+      await Promise.all(
+        uniqueIds.map(async (id) => {
+          try {
+            const regRes = await registrationApi.getMyRegistration(id, termId);
+            if (regRes.data?.studentDepartment) {
+              newDepts[id] = regRes.data.studentDepartment;
+            } else {
+              newDepts[id] = 'Unknown';
+            }
+          } catch (e) {
+             newDepts[id] = 'Unknown';
+          }
+        })
+      );
+      setStudentDepartments(newDepts);
+    } catch (e) {
+      console.error('Error fetching departments', e);
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
     try {
       if (activeTab === 'contracts') {
+        let fetchedContracts = [];
         if (debouncedFilter) {
           const res = await staffApi.getContractsByStudent(debouncedFilter);
-          setContracts(res.data.content || []);
+          fetchedContracts = res.data.content || [];
         } else {
-          // Fetch page 0 with size 100 for report
           const res = await staffApi.getContracts(0, 100, 'createdAt', 'desc');
-          setContracts(res.data.content || []);
+          fetchedContracts = res.data.content || [];
         }
+        
+        // Fetch departments
+        await loadDepartmentsForStudents(fetchedContracts.map((c: any) => c.studentId));
+        
+        // Apply local filters
+        if (balanceFilter) {
+          const targetBalance = parseFloat(balanceFilter);
+          if (!isNaN(targetBalance)) {
+             // Let's filter contracts with balance <= target balance for flexibility, or exact. The user said "a balance of 500K". Let's do exact match or within 1 RWF due to float.
+             // Actually, doing exact match.
+             fetchedContracts = fetchedContracts.filter((c: any) => Math.abs(c.totalFees - (c.totalPaidOnInstallments || 0) - targetBalance) < 1 || Math.abs(c.totalFees - targetBalance) < 1);
+          }
+        }
+        if (overdueFilter) {
+          fetchedContracts = fetchedContracts.filter((c: any) => c.status === 'OVERDUE');
+        }
+        if (departmentFilter) {
+          const q = departmentFilter.toLowerCase();
+          fetchedContracts = fetchedContracts.filter((c: any) => {
+             const dept = studentDepartments[c.studentId] || '';
+             return dept.toLowerCase().includes(q);
+          });
+        }
+        if (academicYearFilter) {
+          const q = academicYearFilter.toLowerCase();
+          fetchedContracts = fetchedContracts.filter((c: any) => 
+            (c.academicYear && c.academicYear.toLowerCase().includes(q)) || 
+            (c.termId && c.termId.toLowerCase().includes(q))
+          );
+        }
+        
+        setContracts(fetchedContracts);
+
       } else if (activeTab === 'penalties') {
         const res = await staffApi.getPenalties(0, 100);
         let fetchedPenalties = res.data.content || [];
@@ -51,9 +118,18 @@ export default function StaffReports() {
             (p.studentName && p.studentName.toLowerCase().includes(q))
           );
         }
+        
+        await loadDepartmentsForStudents(fetchedPenalties.map((p: any) => p.studentId));
+        if (departmentFilter) {
+          const q = departmentFilter.toLowerCase();
+          fetchedPenalties = fetchedPenalties.filter((p: any) => {
+             const dept = studentDepartments[p.studentId] || '';
+             return dept.toLowerCase().includes(q);
+          });
+        }
         setPenalties(fetchedPenalties);
+        
       } else if (activeTab === 'payments') {
-        // Payments history is equivalent to installments. Fetch top 100
         const res = await staffApi.getInstallments(0, 100);
         let fetchedInstallments = res.data.content || [];
         if (debouncedFilter) {
@@ -63,6 +139,20 @@ export default function StaffReports() {
             (i.studentName && i.studentName.toLowerCase().includes(q))
           );
         }
+        
+        await loadDepartmentsForStudents(fetchedInstallments.map((i: any) => i.studentId));
+        
+        if (overdueFilter) {
+          fetchedInstallments = fetchedInstallments.filter((i: any) => i.status === 'OVERDUE');
+        }
+        if (departmentFilter) {
+          const q = departmentFilter.toLowerCase();
+          fetchedInstallments = fetchedInstallments.filter((i: any) => {
+             const dept = studentDepartments[i.studentId] || '';
+             return dept.toLowerCase().includes(q);
+          });
+        }
+        
         setPayments(fetchedInstallments);
       }
     } catch (err) {
@@ -137,45 +227,119 @@ export default function StaffReports() {
       </div>
 
       {/* Filters & Tabs */}
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col lg:flex-row justify-between gap-4 print:hidden">
-        <div className="flex bg-gray-100 p-1 rounded-lg w-fit">
-          <button 
-            onClick={() => setActiveTab('payments')}
-            className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'payments' ? 'bg-white shadow-sm text-blue-700' : 'text-gray-600 hover:text-gray-900'}`}
-          >
-            Payment History
-          </button>
-          <button 
-            onClick={() => setActiveTab('contracts')}
-            className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'contracts' ? 'bg-white shadow-sm text-blue-700' : 'text-gray-600 hover:text-gray-900'}`}
-          >
-            Contracts Taken
-          </button>
-          <button 
-            onClick={() => setActiveTab('penalties')}
-            className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'penalties' ? 'bg-white shadow-sm text-blue-700' : 'text-gray-600 hover:text-gray-900'}`}
-          >
-            Penalties Provided
-          </button>
+      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col gap-4 print:hidden">
+        <div className="flex flex-col lg:flex-row justify-between gap-4">
+          <div className="flex bg-gray-100 p-1 rounded-lg w-fit">
+            <button 
+              onClick={() => setActiveTab('payments')}
+              className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'payments' ? 'bg-white shadow-sm text-blue-700' : 'text-gray-600 hover:text-gray-900'}`}
+            >
+              Payment History
+            </button>
+            <button 
+              onClick={() => setActiveTab('contracts')}
+              className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'contracts' ? 'bg-white shadow-sm text-blue-700' : 'text-gray-600 hover:text-gray-900'}`}
+            >
+              Contracts Taken
+            </button>
+            <button 
+              onClick={() => setActiveTab('penalties')}
+              className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'penalties' ? 'bg-white shadow-sm text-blue-700' : 'text-gray-600 hover:text-gray-900'}`}
+            >
+              Penalties Provided
+            </button>
+          </div>
+
+          <div className="relative w-full lg:w-72">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-4 w-4 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Filter by Student ID or Name..."
+              value={studentIdFilter}
+              onChange={(e) => setStudentIdFilter(e.target.value)}
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg w-full text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            />
+            {studentIdFilter && (
+              <button 
+                onClick={() => setStudentIdFilter('')}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+              >
+                <XCircle className="h-4 w-4" />
+              </button>
+            )}
+          </div>
         </div>
 
-        <div className="relative w-full lg:w-72">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search className="h-4 w-4 text-gray-400" />
+        {/* Advanced Filters */}
+        <div className="flex flex-wrap gap-4 pt-4 border-t border-gray-100 items-end">
+          <div className="flex items-center gap-2 text-gray-600 mr-2">
+            <Filter size={16} />
+            <span className="text-sm font-medium">Advanced Filters:</span>
           </div>
-          <input
-            type="text"
-            placeholder="Filter by Student ID or Name..."
-            value={studentIdFilter}
-            onChange={(e) => setStudentIdFilter(e.target.value)}
-            className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg w-full text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-          />
-          {studentIdFilter && (
-            <button 
-              onClick={() => setStudentIdFilter('')}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+          
+          <div className="flex flex-col gap-1 w-48">
+            <label className="text-xs text-gray-500 font-medium">Department</label>
+            <input
+              type="text"
+              placeholder="e.g. Software Engineering"
+              value={departmentFilter}
+              onChange={(e) => setDepartmentFilter(e.target.value)}
+              className="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            />
+          </div>
+
+          {(activeTab === 'contracts' || activeTab === 'payments') && (
+            <div className="flex flex-col gap-1 w-32">
+              <label className="text-xs text-gray-500 font-medium">Balance (exact)</label>
+              <input
+                type="number"
+                placeholder="e.g. 500000"
+                value={balanceFilter}
+                onChange={(e) => setBalanceFilter(e.target.value)}
+                className="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+            </div>
+          )}
+
+          {activeTab === 'contracts' && (
+            <div className="flex flex-col gap-1 w-32">
+              <label className="text-xs text-gray-500 font-medium">Academic Year</label>
+              <input
+                type="text"
+                placeholder="e.g. 2024"
+                value={academicYearFilter}
+                onChange={(e) => setAcademicYearFilter(e.target.value)}
+                className="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 pb-1.5 ml-2">
+            <input
+              type="checkbox"
+              id="overdueFilter"
+              checked={overdueFilter}
+              onChange={(e) => setOverdueFilter(e.target.checked)}
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+            />
+            <label htmlFor="overdueFilter" className="text-sm text-gray-700 cursor-pointer select-none">
+              Show Overdue Only
+            </label>
+          </div>
+          
+          {(departmentFilter || balanceFilter || overdueFilter || academicYearFilter) && (
+            <button
+              onClick={() => {
+                setDepartmentFilter('');
+                setBalanceFilter('');
+                setOverdueFilter(false);
+                setAcademicYearFilter('');
+              }}
+              className="text-sm text-blue-600 hover:text-blue-800 ml-auto pb-1 font-medium"
             >
-              <XCircle className="h-4 w-4" />
+              Clear Filters
             </button>
           )}
         </div>
