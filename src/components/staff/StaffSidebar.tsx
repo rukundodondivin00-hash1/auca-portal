@@ -69,13 +69,6 @@ export default function StaffSidebar() {
               isExpanded={isExpanded} 
             />
             <NavItem 
-              icon={<Users size={20} />} 
-              label="Students" 
-              href="/staff/students" 
-              isActive={location.pathname === '/staff/students'} 
-              isExpanded={isExpanded} 
-            />
-            <NavItem 
               icon={<BookOpen size={20} />} 
               label="Term Config" 
               href="/staff/term-config" 

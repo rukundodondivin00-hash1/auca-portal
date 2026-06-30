@@ -19,7 +19,8 @@ export default function ContractPage() {
   const [penaltyPercentage, setPenaltyPercentage] = useState<number>(5);
   const [initialPaymentPercentage, setInitialPaymentPercentage] = useState<number>(100);
   const [selectedInstallmentsCount, setSelectedInstallmentsCount] = useState<number>(0);
-  const [customAmounts, setCustomAmounts] = useState<number[]>([]);
+  const [customAmounts, setCustomAmounts] = useState<string[]>([]);
+  const [customDates, setCustomDates] = useState<string[]>([]);
   const navigate = useNavigate();
 
   const [hasAccepted, setHasAccepted] = useState(false);
@@ -121,7 +122,7 @@ export default function ContractPage() {
   useEffect(() => {
     if (configInstallments.length === 0) return;
     let allocated = 0;
-    const initialAmounts: number[] = [];
+    const initialAmounts: string[] = [];
     const active = configInstallments.slice(0, selectedInstallmentsCount);
     
     for (let i = 0; i < active.length; i++) {
@@ -129,26 +130,19 @@ export default function ContractPage() {
       if (i === active.length - 1) {
         amountDue = contractBalance - allocated;
       } else {
-        if (active.length < configInstallments.length) {
-          amountDue = Math.round(contractBalance / active.length);
-        } else {
-          amountDue = Math.round((totalFees * active[i].percentage) / 100);
-          const leftToAllocate = contractBalance - allocated;
-          if (amountDue > leftToAllocate) amountDue = leftToAllocate;
-          if (amountDue < 0) amountDue = 0;
-        }
+        amountDue = Math.round(contractBalance / active.length);
         allocated += amountDue;
       }
-      initialAmounts.push(Math.max(0, amountDue));
+      initialAmounts.push(Math.max(0, amountDue).toString());
     }
     setCustomAmounts(initialAmounts);
+    setCustomDates(active.map(a => a.deadlineDate || ''));
   }, [selectedInstallmentsCount, contractBalance, configInstallments, totalFees]);
 
   const generatedInstallments = activeInstallments.map((inst, index) => {
     return {
       ...inst,
-      amount: customAmounts[index] !== undefined ? customAmounts[index] : 0,
-      displayPercentage: selectedInstallmentsCount < configInstallments.length ? Math.round(100 / selectedInstallmentsCount) : inst.percentage
+      amount: customAmounts[index] !== undefined ? customAmounts[index] : '0'
     };
   });
 
@@ -168,6 +162,25 @@ export default function ContractPage() {
       return;
     }
 
+    const todayStr = new Date().toISOString().split('T')[0];
+    const finalDeadline = configInstallments[configInstallments.length - 1]?.deadlineDate;
+
+    for (let i = 0; i < selectedInstallmentsCount; i++) {
+      const d = customDates[i] || generatedInstallments[i].deadlineDate;
+      if (!d) {
+        setSubmitError(`Please select a deadline date for Installment #${i + 1}`);
+        return;
+      }
+      if (d < todayStr) {
+        setSubmitError(`Deadline date for Installment #${i + 1} cannot be in the past.`);
+        return;
+      }
+      if (finalDeadline && d > finalDeadline) {
+        setSubmitError(`Deadline date for Installment #${i + 1} cannot be after the Final Term Deadline (${finalDeadline}).`);
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     setSubmitError(null);
     try {
@@ -177,7 +190,7 @@ export default function ContractPage() {
         totalFees,
         numberOfInstallments: selectedInstallmentsCount,
         installments: generatedInstallments.map((inst, index) => ({
-          deadlineDate: inst.deadlineDate,
+          deadlineDate: customDates[index] || inst.deadlineDate,
           amount: customAmounts[index] || 0
         }))
       };
@@ -390,10 +403,19 @@ export default function ContractPage() {
                 </div>
                 <div className="flex-1">
                   <p className="text-xs font-semibold text-gray-500 mb-1">Deadline Date</p>
-                  <p className="font-bold text-gray-800">{inst.deadlineDate}</p>
+                  <input
+                    type="date"
+                    className="w-full bg-transparent border-b border-gray-300 focus:border-blue-600 focus:outline-none py-0.5 text-gray-900 font-bold"
+                    value={customDates[i] !== undefined ? customDates[i] : inst.deadlineDate}
+                    onChange={(e) => {
+                      const newDates = [...customDates];
+                      newDates[i] = e.target.value;
+                      setCustomDates(newDates);
+                    }}
+                  />
                 </div>
                 <div className="flex-1">
-                  <p className="text-xs font-semibold text-gray-500 mb-1">Amount Due (approx. {inst.displayPercentage}%)</p>
+                  <p className="text-xs font-semibold text-gray-500 mb-1">Amount Due</p>
                   <div className="flex items-center gap-1 font-bold text-gray-800">
                     <span className="text-gray-500 text-sm">RF</span>
                     <input
@@ -403,7 +425,7 @@ export default function ContractPage() {
                       value={customAmounts[i] !== undefined ? customAmounts[i] : ''}
                       onChange={(e) => {
                         const newAmounts = [...customAmounts];
-                        newAmounts[i] = Number(e.target.value);
+                        newAmounts[i] = e.target.value;
                         setCustomAmounts(newAmounts);
                       }}
                     />

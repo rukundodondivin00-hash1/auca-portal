@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Settings, Save, AlertCircle, Loader2, Plus, Trash2 } from 'lucide-react';
+import { Settings, Save, AlertCircle, Loader2 } from 'lucide-react';
 import { staffApi, registrationApi } from '@/lib/api';
 
 interface InstallmentConfig {
@@ -13,7 +13,8 @@ export default function StaffTermConfig() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [termId, setTermId] = useState('');
-  const [installments, setInstallments] = useState<InstallmentConfig[]>([]);
+  const [installmentsCount, setInstallmentsCount] = useState<number>(2);
+  const [finalDeadlineDate, setFinalDeadlineDate] = useState<string>('');
   const [penaltyPercentage, setPenaltyPercentage] = useState<number>(5);
   const [initialPaymentPercentage, setInitialPaymentPercentage] = useState<number>(100);
   const [message, setMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
@@ -34,11 +35,9 @@ export default function StaffTermConfig() {
                 if (configRes.data.initialPaymentPercentage !== undefined) {
                   setInitialPaymentPercentage(Number(configRes.data.initialPaymentPercentage));
                 }
-                if (configRes.data.installments) {
-                  setInstallments(configRes.data.installments.map((i: any) => ({
-                    ...i,
-                    deadlineDate: i.deadlineDate || ''
-                  })));
+                if (configRes.data.installments && configRes.data.installments.length > 0) {
+                  setInstallmentsCount(configRes.data.installments.length);
+                  setFinalDeadlineDate(configRes.data.installments[configRes.data.installments.length - 1].deadlineDate || '');
                 }
              }
           } catch (e) {
@@ -54,67 +53,41 @@ export default function StaffTermConfig() {
     fetchConfig();
   }, []);
 
-  const handleAddInstallment = () => {
-    setInstallments([
-      ...installments,
-      {
-        installmentNumber: installments.length + 1,
-        percentage: 0,
-        deadlineDate: ''
-      }
-    ]);
-  };
-
-  const handleRemoveInstallment = (index: number) => {
-    const updated = installments.filter((_, i) => i !== index);
-    updated.forEach((inst, i) => inst.installmentNumber = i + 1);
-    setInstallments(updated);
-  };
-
-  const handleUpdateInstallment = (index: number, field: keyof InstallmentConfig, value: any) => {
-    const updated = [...installments];
-    updated[index] = { ...updated[index], [field]: value };
-    setInstallments(updated);
-  };
-
   const handleSave = async () => {
     if (!termId) return;
-    
-    // Validate percentages
-    const totalPercentage = initialPaymentPercentage + installments.reduce((sum, inst) => sum + Number(inst.percentage), 0);
-    if (Math.abs(totalPercentage - 100) > 0.01) {
-      setMessage({ type: 'error', text: `Total percentage (Initial + Installments) must equal exactly 100%. Currently: ${totalPercentage}%` });
+
+    if (!finalDeadlineDate) {
+      setMessage({ type: 'error', text: 'Please set the Final Deadline Date.' });
       return;
     }
 
-    // Validate dates
-    const missingDates = installments.some(i => !i.deadlineDate);
-    if (missingDates) {
-      setMessage({ type: 'error', text: 'Please set a deadline date for all installments.' });
+    if (installmentsCount < 1) {
+      setMessage({ type: 'error', text: 'Number of installments must be at least 1.' });
       return;
     }
     
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const hasPastDates = installments.some(i => {
-      const d = new Date(i.deadlineDate);
-      d.setHours(0, 0, 0, 0);
-      return d < today;
-    });
-    if (hasPastDates) {
-      setMessage({ type: 'error', text: 'Installment deadline dates cannot be in the past.' });
+    const d = new Date(finalDeadlineDate);
+    d.setHours(0, 0, 0, 0);
+    if (d < today) {
+      setMessage({ type: 'error', text: 'Final deadline date cannot be in the past.' });
       return;
     }
 
     setSaving(true);
     setMessage(null);
     try {
+      const remainingPercentage = 100 - initialPaymentPercentage;
+      const generatedInstallments = Array.from({ length: installmentsCount }).map((_, i) => ({
+        installmentNumber: i + 1,
+        percentage: i === 0 ? remainingPercentage : 0,
+        deadlineDate: finalDeadlineDate
+      }));
+
       await staffApi.saveTermConfig({
         termId,
-        installments: installments.map(i => ({
-          ...i,
-          percentage: Number(i.percentage)
-        })),
+        installments: generatedInstallments,
         penaltyPercentage: penaltyPercentage / 100,
         initialPaymentPercentage: initialPaymentPercentage
       });
@@ -191,7 +164,7 @@ export default function StaffTermConfig() {
                   <p className="text-xs text-slate-500 mt-1">Penalty applied overnight when an installment deadline is missed.</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Initial Payment (%)</label>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Initial Payment Required (%)</label>
                   <input 
                     type="number" 
                     min={0}
@@ -200,72 +173,36 @@ export default function StaffTermConfig() {
                     onChange={(e) => setInitialPaymentPercentage(Number(e.target.value))}
                     className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
-                  <p className="text-xs text-slate-500 mt-1">Minimum upfront payment required for a contract (e.g. 50).</p>
+                  <p className="text-xs text-slate-500 mt-1">Minimum upfront payment required to get an exam permit.</p>
                 </div>
               </div>
 
               <div className="pt-6 border-t border-slate-100">
-                <div className="flex items-center justify-between mb-4">
+                <h3 className="text-md font-semibold text-slate-800 mb-4">Student Custom Installment Settings</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <h3 className="text-md font-semibold text-slate-800">Installment Schedule</h3>
-                    <p className="text-sm text-slate-500">Define percentages and deadlines for payments.</p>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">Number of Installments Allowed</label>
+                    <input 
+                      type="number" 
+                      min={1}
+                      max={12}
+                      value={installmentsCount}
+                      onChange={(e) => setInstallmentsCount(Number(e.target.value))}
+                      className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <p className="text-xs text-slate-500 mt-1">How many installments the student is allowed to create.</p>
                   </div>
-                  <button
-                    onClick={handleAddInstallment}
-                    className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
-                  >
-                    <Plus className="w-4 h-4" /> Add Installment
-                  </button>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">Final Term Deadline</label>
+                    <input 
+                      type="date"
+                      value={finalDeadlineDate}
+                      onChange={(e) => setFinalDeadlineDate(e.target.value)}
+                      className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <p className="text-xs text-slate-500 mt-1">The latest possible date a student can pick for their final installment.</p>
+                  </div>
                 </div>
-
-                {installments.length === 0 ? (
-                  <div className="text-center py-8 bg-slate-50 rounded-lg border border-dashed border-slate-300 text-slate-500">
-                    No installments configured yet.
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {installments.map((inst, index) => (
-                      <div key={index} className="flex items-center gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                        <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center font-bold text-blue-700 shrink-0">
-                          #{inst.installmentNumber}
-                        </div>
-                        <div className="flex-1">
-                          <label className="block text-xs font-semibold text-slate-500 mb-1">Percentage (%)</label>
-                          <input
-                            type="number"
-                            min="0"
-                            max="100"
-                            value={inst.percentage}
-                            onChange={(e) => handleUpdateInstallment(index, 'percentage', Number(e.target.value))}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <label className="block text-xs font-semibold text-slate-500 mb-1">Deadline Date</label>
-                          <input
-                            type="date"
-                            value={inst.deadlineDate}
-                            onChange={(e) => handleUpdateInstallment(index, 'deadlineDate', e.target.value)}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                          />
-                        </div>
-                        <button
-                          onClick={() => handleRemoveInstallment(index)}
-                          className="mt-5 p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
-                      </div>
-                    ))}
-                    
-                    <div className="flex justify-between items-center p-4 bg-slate-100 rounded-lg border border-slate-200 mt-4">
-                      <span className="font-semibold text-slate-700">Total Percentage (Initial + Installments):</span>
-                      <span className={`font-bold ${initialPaymentPercentage + installments.reduce((sum, inst) => sum + Number(inst.percentage), 0) === 100 ? 'text-green-600' : 'text-red-600'}`}>
-                        {initialPaymentPercentage + installments.reduce((sum, inst) => sum + Number(inst.percentage), 0)}%
-                      </span>
-                    </div>
-                  </div>
-                )}
               </div>
 
               <div className="flex justify-end pt-4 border-t border-slate-100">

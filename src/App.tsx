@@ -19,8 +19,6 @@ import Settings from "./components/Settings";
 import StaffDashboard from "./pages/staff/StaffDashboard";
 import StaffContracts from "./pages/staff/StaffContracts";
 import StaffContractDetails from "./pages/staff/StaffContractDetails";
-import StaffStudents from "./pages/staff/StaffStudents";
-import StaffStudentDetails from "./pages/staff/StaffStudentDetails";
 import StaffPenalties from "./pages/staff/StaffPenalties";
 import StaffTermConfig from "./pages/staff/StaffTermConfig";
 import StaffSettings from "./pages/staff/StaffSettings";
@@ -103,8 +101,6 @@ export default function App() {
                     <Route path="/dashboard" element={<StaffDashboard />} />
                     <Route path="/contracts" element={<StaffContracts />} />
                     <Route path="/contracts/:id" element={<StaffContractDetails />} />
-                    <Route path="/students" element={<StaffStudents />} />
-                    <Route path="/students/:studentId" element={<StaffStudentDetails />} />
                     <Route path="/penalties" element={<StaffPenalties />} />
                     <Route path="/reports" element={<StaffReports />} />
                     <Route path="/term-config" element={<StaffTermConfig />} />

@@ -45,8 +45,8 @@ export default function MyExamPermit() {
         let pData: any = {
           name: '',
           studentId: studentId,
-          gender: 'MALE', // Defaulted or fetched
-          program: '',
+          gender: 'MALE',
+          program: 'Day',
           department: '',
           termId: termRes.data?.id || '',
           courses: []
@@ -61,13 +61,25 @@ export default function MyExamPermit() {
               pData = {
                 ...pData,
                 name: r.studentName,
-                program: r.studentProgram,
+                program: r.studentProgram || 'Day',
                 department: r.studentDepartment,
                 courses: r.courses || []
               };
             }
           } catch {
             // Ignore if no registration
+          }
+        }
+
+        let initialPaymentPercentage = 100;
+        if (pData.termId) {
+          try {
+            const configRes = await studentApi.getTermConfig(pData.termId);
+            if (configRes.data && configRes.data.initialPaymentPercentage) {
+              initialPaymentPercentage = Number(configRes.data.initialPaymentPercentage);
+            }
+          } catch {
+            // Default to 100% if config missing
           }
         }
 
@@ -83,24 +95,18 @@ export default function MyExamPermit() {
             const c = contracts[0];
             const installPaid = (c.installments || []).reduce((s: number, i: any) => s + (i.amountPaid || 0), 0);
             paidAmount = currentPrePaid + installPaid;
-            
-            if (paidAmount < totalFee) {
-               const paidInstallmentsCount = (c.installments || []).filter((i: any) => i.status === 'PAID' || i.status === 'PARTIALLY_PAID').length;
-               if (paidInstallmentsCount >= 1) {
-                 setPermitStatus('PARTIAL');
-               } else {
-                 setPermitStatus('NONE');
-               }
-            } else {
-               setPermitStatus('FULL');
-            }
           } else {
             paidAmount = currentPrePaid;
-            if (paidAmount >= totalFee && totalFee > 0) {
-              setPermitStatus('FULL');
-            } else {
-              setPermitStatus('NONE');
-            }
+          }
+
+          const minRequiredAmount = (totalFee * initialPaymentPercentage) / 100;
+
+          if (paidAmount >= totalFee && totalFee > 0) {
+            setPermitStatus('FULL');
+          } else if (paidAmount >= minRequiredAmount && minRequiredAmount > 0) {
+            setPermitStatus('PARTIAL');
+          } else {
+            setPermitStatus('NONE');
           }
         } catch {
           setPermitStatus('NONE');
@@ -148,21 +154,19 @@ export default function MyExamPermit() {
     );
   }
 
-  // Calculate total credits
   const totalCredits = permitData?.courses?.reduce((sum, c) => sum + c.credits, 0) || 0;
 
-  // Generate QR code content
   const qrContent = permitData ? JSON.stringify({
     id: permitData.studentId,
     name: permitData.name,
     term: permitData.termId,
-    status: permitStatus === 'FULL' ? 'FULL' : 'PARTIAL'
+    status: permitStatus
   }) : '';
+
+  const currentDate = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-20">
-      
-      {/* Non-printable screen header */}
       <div className="flex items-center justify-between mb-4 print:hidden">
         <h1 className="text-3xl font-bold text-slate-800">My Exam Permit</h1>
         <button 
@@ -180,153 +184,152 @@ export default function MyExamPermit() {
           <AlertTriangle className="w-16 h-16 text-red-500 mb-4" />
           <h2 className="text-2xl font-bold text-red-700">No Exam Permit Available</h2>
           <p className="mt-2 text-red-600 max-w-lg mx-auto">
-            You do not have a valid exam permit. You must either pay the full semester fees upfront or sign a payment contract and complete at least one installment to receive a partial permit.
+            You do not have a valid exam permit. You must pay at least your required initial payment to receive a partial permit, or pay in full for a full permit.
           </p>
         </div>
       )}
 
       {permitStatus !== 'NONE' && permitData && (
-        <div className="bg-white mx-auto shadow-xl print:shadow-none border border-slate-300 print:border-none p-8" style={{ width: '100%', maxWidth: '900px' }}>
+        <div className="bg-white mx-auto shadow-sm print:shadow-none p-8 font-sans" style={{ width: '100%', maxWidth: '850px' }}>
           
           {/* Header Section */}
-          <div className="flex justify-between items-center border-b-4 border-[#00447b] pb-6 mb-6">
-            <div className="flex items-center gap-6">
-              <img src={aucaLogo} alt="AUCA Logo" className="w-24 h-24 object-contain" />
-              <div>
-                <h1 className="text-2xl font-black text-[#00447b] uppercase tracking-wide">Adventist University of Central Africa</h1>
-                <h2 className="text-lg font-bold text-slate-700 uppercase mt-1">Office of the Registrar</h2>
-                <h3 className="text-md font-semibold text-slate-600 mt-1">Student Examination Permit</h3>
-                <p className="text-xs text-slate-500 mt-2 font-medium">PRINT DATE: {new Date().toLocaleString().toUpperCase()}</p>
+          <div className="flex flex-col items-center justify-center mb-6">
+            <div className="flex items-center gap-3">
+              <img src={aucaLogo} alt="AUCA Logo" className="w-16 h-16 object-contain" />
+              <div className="text-center">
+                <h1 className="text-xl font-bold text-[#00447b] font-serif">Adventist University of Central Africa</h1>
+                <p className="text-xs text-[#00447b] tracking-wide">P.O. Box 2461 Kigali, Rwanda | www.auca.ac.rw | info@auca.ac.rw</p>
               </div>
             </div>
-            <div className="flex flex-col items-center justify-center p-2 border-2 border-dashed border-gray-300 rounded-lg bg-white">
-              <QRCodeSVG value={qrContent} size={80} level="M" includeMargin={false} />
-            </div>
-          </div>
-
-          {/* Blue Title Bar */}
-          <div className="bg-[#00447b] text-white text-center py-2 font-bold uppercase tracking-widest text-lg mb-8">
-            Examination Permit
-          </div>
-
-          {/* Student Info Area */}
-          <div className="flex flex-col md:flex-row gap-6 mb-8 border-b-2 border-dashed border-gray-300 pb-8">
             
-            {/* Photo Upload Area */}
-            <div className="w-40 shrink-0 flex flex-col items-center">
+            <h2 className="text-lg font-extrabold mt-6 uppercase tracking-wide">EXAMINATION PERMIT CARD</h2>
+            <p className="text-sm font-bold mt-1">Semester {permitData.termId.replace('/', '/')} &nbsp;|&nbsp; Generated {currentDate}</p>
+          </div>
+
+          {/* Main Content Grid */}
+          <div className="flex items-stretch border border-black mb-4">
+            
+            {/* Left Column (Info + Courses) */}
+            <div className="flex-1 flex flex-col border-r border-black">
+              
+              {/* Info Table */}
+              <div className="flex flex-col border-b border-black">
+                <div className="grid grid-cols-[130px_1fr] border-b border-black text-xs font-bold">
+                  <div className="bg-[#e6f0ff] p-1.5 border-r border-black">Reg No</div>
+                  <div className="p-1.5 font-normal">{permitData.studentId}</div>
+                </div>
+                <div className="grid grid-cols-[130px_1fr] border-b border-black text-xs font-bold">
+                  <div className="bg-[#e6f0ff] p-1.5 border-r border-black">Name</div>
+                  <div className="p-1.5 font-normal uppercase">{permitData.name}</div>
+                </div>
+                <div className="grid grid-cols-[130px_1fr] border-b border-black text-xs font-bold">
+                  <div className="bg-[#e6f0ff] p-1.5 border-r border-black">Faculty</div>
+                  <div className="p-1.5 font-normal">Information Technology</div>
+                </div>
+                <div className="grid grid-cols-[130px_1fr] border-b border-black text-xs font-bold">
+                  <div className="bg-[#e6f0ff] p-1.5 border-r border-black">Department</div>
+                  <div className="p-1.5 font-normal">{permitData.department || 'Networks and Com. Systems'}</div>
+                </div>
+                <div className="grid grid-cols-[130px_1fr] border-b border-black text-xs font-bold">
+                  <div className="bg-[#e6f0ff] p-1.5 border-r border-black">Programme</div>
+                  <div className="p-1.5 font-normal">{permitData.program}</div>
+                </div>
+                <div className="grid grid-cols-[130px_1fr] text-xs font-bold">
+                  <div className="bg-[#e6f0ff] p-1.5 border-r border-black">Permit Status</div>
+                  <div className="p-1.5 font-bold text-blue-900">
+                    {permitStatus === 'FULL' ? 'FULL - Allowed to sit for all exams' : 'PARTIAL - Allowed to sit for mid-term exams'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Courses Table */}
+              <table className="w-full text-xs border-collapse h-full">
+                <thead className="bg-[#00447b] text-white">
+                  <tr>
+                    <th className="py-1 px-2 border-b border-r border-black font-bold text-center w-32">CODE</th>
+                    <th className="py-1 px-2 border-b border-r border-black font-bold text-center">COURSE TITLE</th>
+                    <th className="py-1 px-2 border-b border-black font-bold text-center w-16">CR</th>
+                  </tr>
+                </thead>
+                <tbody className="align-top">
+                  {permitData.courses.length > 0 ? (
+                    permitData.courses.map((course, idx) => (
+                      <tr key={idx}>
+                        <td className="py-1 px-2 border-b border-r border-black text-left">{course.courseCode}</td>
+                        <td className="py-1 px-2 border-b border-r border-black text-left">{course.courseName}</td>
+                        <td className="py-1 px-2 border-b border-black text-center">{course.credits}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={3} className="py-4 text-center italic text-gray-500 border-b border-black">No courses registered</td>
+                    </tr>
+                  )}
+                </tbody>
+                <tfoot className="mt-auto">
+                  <tr className="bg-[#e6f0ff] font-bold">
+                    <td className="py-1 px-2 border-r border-black text-center">Courses</td>
+                    <td className="py-1 px-2 border-r border-black text-center">
+                      <span className="inline-block w-8">{permitData.courses.length}</span>
+                      <span className="inline-block mx-4">Credits</span>
+                      <span className="inline-block w-8">{totalCredits}</span>
+                    </td>
+                    <td className="py-1 px-2 text-center">{totalCredits}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            {/* Right Photo & QR Box */}
+            <div className="w-48 flex flex-col">
               <div 
-                className="w-36 h-44 border-4 border-slate-200 bg-slate-50 flex flex-col items-center justify-center relative overflow-hidden group cursor-pointer"
+                className="flex-1 min-h-[160px] flex items-center justify-center relative cursor-pointer group p-3"
                 onClick={() => fileInputRef.current?.click()}
               >
                 {profilePhoto ? (
                   <img src={profilePhoto} alt="Student" className="w-full h-full object-cover" />
                 ) : (
-                  <>
-                    <Upload className="w-8 h-8 text-slate-400 mb-2 group-hover:text-[#00447b] transition-colors" />
-                    <span className="text-xs font-semibold text-slate-500 group-hover:text-[#00447b] transition-colors text-center px-2">Click to Upload<br/>Photo</span>
-                  </>
-                )}
-                {profilePhoto && (
-                  <div className="absolute inset-0 bg-black/50 hidden group-hover:flex items-center justify-center print:hidden">
-                    <span className="text-white text-xs font-bold">Change Photo</span>
+                  <div className="text-center p-2">
+                    <Upload className="w-6 h-6 text-gray-300 mx-auto mb-1 group-hover:text-[#00447b]" />
+                    <span className="text-[10px] text-gray-400 group-hover:text-[#00447b]">Click to Upload Photo</span>
                   </div>
                 )}
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handlePhotoUpload} 
+                  accept="image/*" 
+                  className="hidden" 
+                />
               </div>
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handlePhotoUpload} 
-                accept="image/*" 
-                className="hidden" 
-              />
-            </div>
-
-            {/* Info Grid */}
-            <div className="flex-1 grid grid-cols-12 gap-x-4 gap-y-3 text-sm">
-              <div className="col-span-3 font-bold text-slate-700">FULL NAME:</div>
-              <div className="col-span-5 font-semibold text-slate-900 border-b border-dotted border-gray-400 pb-1">{permitData.name}</div>
-              
-              <div className="col-span-2 font-bold text-slate-700 text-right">FEES BAL DUE:</div>
-              <div className="col-span-2 font-bold text-red-600 border-b border-dotted border-gray-400 pb-1">{permitData.balanceDue.toLocaleString()} RWF</div>
-
-              <div className="col-span-3 font-bold text-slate-700">GENDER:</div>
-              <div className="col-span-9 font-semibold text-slate-900 border-b border-dotted border-gray-400 pb-1">{permitData.gender}</div>
-
-              <div className="col-span-3 font-bold text-slate-700">STUDENT NO:</div>
-              <div className="col-span-9 font-semibold text-slate-900 border-b border-dotted border-gray-400 pb-1">{permitData.studentId}</div>
-
-              <div className="col-span-3 font-bold text-slate-700">PROGRAMME:</div>
-              <div className="col-span-9 font-semibold text-slate-900 border-b border-dotted border-gray-400 pb-1">{permitData.department}</div>
-
-              <div className="col-span-3 font-bold text-slate-700">STUDY PROGRAM:</div>
-              <div className="col-span-5 font-semibold text-slate-900 border-b border-dotted border-gray-400 pb-1">{permitData.program || 'DAY'}</div>
-
-              <div className="col-span-2 font-bold text-slate-700 text-right">TERM:</div>
-              <div className="col-span-2 font-semibold text-slate-900 border-b border-dotted border-gray-400 pb-1">{permitData.termId}</div>
-
-              <div className="col-span-3 font-bold text-slate-700">PERMIT TYPE:</div>
-              <div className="col-span-9 border-b border-dotted border-gray-400 pb-1 flex items-center">
-                <span className={`font-black text-sm uppercase px-2 py-0.5 rounded ${permitStatus === 'FULL' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}`}>
-                  {permitStatus === 'FULL' ? 'FULL EXAM PERMIT' : 'PARTIAL (MIDTERM EXAMS ONLY)'}
-                </span>
+              <div className="border-t border-black p-2 pb-4 flex flex-col items-center bg-white">
+                <span className="text-[10px] font-bold mb-1 uppercase tracking-wider">VERIFY</span>
+                <QRCodeSVG value={qrContent} size={70} level="M" includeMargin={false} />
+                <span className="text-[9px] text-gray-600 mt-1">Scan QR</span>
               </div>
             </div>
           </div>
 
-          {/* Courses Title */}
-          <div className="text-center font-bold text-[#00447b] tracking-wider mb-4">
-            COURSES / MODULES REGISTERED
+          {/* Disclaimer */}
+          <div className="border border-black p-1.5 text-[10px] text-gray-800 mb-8">
+            Valid only for this exam session. Alteration invalidates this permit. Phones, smart watches, bags, and unauthorized notes are prohibited.
           </div>
-
-          {/* Courses Table */}
-          <table className="w-full text-sm border border-slate-300 mb-4">
-            <thead className="bg-slate-100 border-b-2 border-slate-300">
-              <tr>
-                <th className="py-2 px-3 text-left font-bold text-slate-800 border-r border-slate-300 w-12">#</th>
-                <th className="py-2 px-3 text-left font-bold text-slate-800 border-r border-slate-300">COURSE NAME</th>
-                <th className="py-2 px-3 text-center font-bold text-slate-800 border-r border-slate-300">CREDIT UNITS</th>
-                <th className="py-2 px-3 text-center font-bold text-slate-800 border-r border-slate-300">CATEGORY</th>
-                <th className="py-2 px-3 text-left font-bold text-slate-800">STATUS</th>
-              </tr>
-            </thead>
-            <tbody>
-              {permitData.courses.length > 0 ? (
-                permitData.courses.map((course, idx) => (
-                  <tr key={idx} className="border-b border-slate-200">
-                    <td className="py-2 px-3 border-r border-slate-300 text-slate-800 font-medium">{idx + 1}</td>
-                    <td className="py-2 px-3 border-r border-slate-300">
-                      <span className="font-bold">{course.courseCode}</span>: {course.courseName}
-                    </td>
-                    <td className="py-2 px-3 border-r border-slate-300 text-center font-medium">{course.credits}</td>
-                    <td className="py-2 px-3 border-r border-slate-300 text-center text-slate-600">CORE</td>
-                    <td className="py-2 px-3 text-slate-800">NORMAL PAPER</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={5} className="py-6 text-center text-slate-500 italic">No courses registered for this term.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-
-          {/* Footer Info */}
-          <p className="text-sm font-bold text-slate-800 italic mb-6">
-            Total Credits Registered for {permitData.termId} is {totalCredits}.
-          </p>
-
-          <p className="text-xs text-justify text-slate-700 leading-tight mb-16 italic">
-            <span className="font-bold underline">NOTES:</span> This is to certify that the above named has been authorized to sit the stated examination(s). This Examination Permit is confidential and must be produced to the invigilator when required at each examination. You are cautioned against contravening any of the University rules and Regulations. Please do not write anything on this Examination Permit. <strong>Always refer to the notice boards for the latest timetable updates.</strong>
-          </p>
 
           {/* Signatures */}
-          <div className="flex justify-between items-end mt-12">
-            <div className="font-bold text-sm text-slate-800 uppercase">
-              REGISTERED BY: <span className="font-normal ml-2">STUDENT</span>
+          <div className="flex justify-between items-end mt-12 px-4">
+            <div className="w-48">
+              <div className="border-b border-black mb-1"></div>
+              <p className="text-xs text-black">Student Signature</p>
             </div>
-            <div className="text-center">
-              <div className="w-48 border-b border-slate-800 mb-1"></div>
-              <p className="font-bold text-sm text-slate-800 uppercase">SCHOOL REGISTRAR</p>
+            <div className="text-center flex flex-col items-center">
+              {/* Authorized Stamp Placeholder */}
+              <div className="relative mb-1">
+                 <img src={aucaLogo} alt="Stamp" className="w-12 h-12 opacity-50 grayscale" style={{ mixBlendMode: 'multiply' }} />
+                 <div className="absolute inset-0 flex items-center justify-center opacity-70">
+                    <span className="text-[8px] font-black uppercase tracking-widest rotate-[-15deg] text-blue-800 whitespace-nowrap border-2 border-blue-800 px-1 rounded-sm">Authorized</span>
+                 </div>
+              </div>
+              <p className="text-[10px] text-black">Authorized Stamp / Signature</p>
             </div>
           </div>
 
