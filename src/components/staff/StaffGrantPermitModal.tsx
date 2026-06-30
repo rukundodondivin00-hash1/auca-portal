@@ -211,10 +211,10 @@ export default function StaffGrantPermitModal({ isOpen, onClose }: StaffGrantPer
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto print:max-w-none print:max-h-none print:p-0 print:border-none print:shadow-none bg-white">
+      <DialogContent className="max-w-4xl h-[95vh] flex flex-col overflow-hidden print:max-w-none print:h-auto print:p-0 print:border-none print:shadow-none bg-white">
         
         {/* Modal Header & Controls - Hidden in print */}
-        <div className="print:hidden space-y-4">
+        <div className="print:hidden space-y-4 shrink-0">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold">Grant Exam Permit</DialogTitle>
           </DialogHeader>
@@ -285,7 +285,8 @@ export default function StaffGrantPermitModal({ isOpen, onClose }: StaffGrantPer
 
         {/* Permit Preview / Print View */}
         {permitData && (
-          <div className="mt-6 border p-6 rounded-lg bg-white shadow-sm print:shadow-none print:border-none print:m-0 print:p-0 print:w-full print:block" id="printable-permit" style={{ width: '100%', maxWidth: '850px', margin: '0 auto' }}>
+          <div className="mt-4 flex-1 overflow-y-auto pr-1">
+          <div className="border p-6 rounded-lg bg-white shadow-sm print:shadow-none print:border-none print:m-0 print:p-0 print:w-full print:block" id="printable-permit" style={{ width: '100%', maxWidth: '850px', margin: '0 auto' }}>
             {/* Header Section */}
             <div className="flex flex-col items-center justify-center mb-6">
               <div className="flex items-center gap-3">
@@ -328,12 +329,18 @@ export default function StaffGrantPermitModal({ isOpen, onClose }: StaffGrantPer
                     <div className="bg-[#e6f0ff] p-1.5 border-r border-black print:bg-[#e6f0ff] print:!bg-[#e6f0ff]">Programme</div>
                     <div className="p-1.5 font-normal">{permitData.program}</div>
                   </div>
-                  <div className="grid grid-cols-[130px_1fr] text-xs font-bold">
+                  <div className="grid grid-cols-[130px_1fr] border-b border-black text-xs font-bold">
                     <div className="bg-[#e6f0ff] p-1.5 border-r border-black print:bg-[#e6f0ff] print:!bg-[#e6f0ff]">Permit Status</div>
                     <div className="p-1.5 font-bold text-blue-900">
                       {permitStatus === 'FULL' ? 'FULL - Allowed to sit for all exams' : 'PARTIAL - Allowed to sit for mid-term exams'}
                     </div>
                   </div>
+                  {grantReason && (
+                    <div className="grid grid-cols-[130px_1fr] text-xs font-bold">
+                      <div className="bg-[#fff3cd] p-1.5 border-r border-black">Granted By / Reason</div>
+                      <div className="p-1.5 font-normal italic text-amber-800">{grantReason}</div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Courses Table */}
@@ -423,6 +430,7 @@ export default function StaffGrantPermitModal({ isOpen, onClose }: StaffGrantPer
               NOTE: Any alteration to this permit makes it invalid and may lead to disciplinary action.
             </div>
 
+          </div>
           </div>
         )}
       </DialogContent>
