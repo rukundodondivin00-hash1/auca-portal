@@ -211,7 +211,7 @@ export default function StaffGrantPermitModal({ isOpen, onClose }: StaffGrantPer
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-4xl h-[95vh] flex flex-col overflow-hidden print:max-w-none print:h-auto print:p-0 print:border-none print:shadow-none bg-white">
+      <DialogContent className={`max-w-4xl flex flex-col overflow-hidden print:max-w-none print:h-auto print:p-0 print:border-none print:shadow-none bg-white ${permitData ? 'h-[95vh]' : 'h-auto'}`}>
         
         {/* Modal Header & Controls - Hidden in print */}
         <div className="print:hidden space-y-4 shrink-0">
