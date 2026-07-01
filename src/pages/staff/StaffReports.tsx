@@ -456,8 +456,17 @@ export default function StaffReports() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            {/* PAYMENTS TABLE */}
-            {activeTab === 'payments' && (
+            {/* Totals Calculations */}
+            {(() => {
+              const totalPaymentsAmount = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
+              const totalContractsFees = contracts.reduce((sum, c) => sum + (c.totalFees || 0), 0);
+              const totalPenaltyAmount = penalties.reduce((sum, p) => sum + (p.penaltyAmount || 0), 0);
+              const totalNewAmount = penalties.reduce((sum, p) => sum + (p.newAmount || 0), 0);
+
+              return (
+                <>
+                  {/* PAYMENTS TABLE */}
+                  {activeTab === 'payments' && (
               <table className="w-full text-left text-sm whitespace-nowrap print:whitespace-normal print:text-xs">
                 <thead className="bg-gray-50 text-gray-600 font-semibold border-b border-gray-200 print:bg-white print:border-b-2 print:border-gray-800 print:text-black">
                   <tr>
@@ -488,6 +497,15 @@ export default function StaffReports() {
                     ))
                   )}
                 </tbody>
+                {payments.length > 0 && (
+                  <tfoot className="bg-gray-100 font-bold border-t-2 border-gray-300 print:bg-white print:border-t-4 print:border-gray-800">
+                    <tr>
+                      <td colSpan={4} className="px-6 py-4 text-right">Total:</td>
+                      <td className="px-6 py-4 text-gray-900 print:text-black">{formatCurrency(totalPaymentsAmount)}</td>
+                      <td colSpan={2}></td>
+                    </tr>
+                  </tfoot>
+                )}
               </table>
             )}
 
@@ -523,6 +541,15 @@ export default function StaffReports() {
                     ))
                   )}
                 </tbody>
+                {contracts.length > 0 && (
+                  <tfoot className="bg-gray-100 font-bold border-t-2 border-gray-300 print:bg-white print:border-t-4 print:border-gray-800">
+                    <tr>
+                      <td colSpan={4} className="px-6 py-4 text-right">Total:</td>
+                      <td className="px-6 py-4 text-gray-900 print:text-black">{formatCurrency(totalContractsFees)}</td>
+                      <td colSpan={2}></td>
+                    </tr>
+                  </tfoot>
+                )}
               </table>
             )}
 
@@ -557,6 +584,17 @@ export default function StaffReports() {
                     ))
                   )}
                 </tbody>
+                {penalties.length > 0 && (
+                  <tfoot className="bg-gray-100 font-bold border-t-2 border-gray-300 print:bg-white print:border-t-4 print:border-gray-800">
+                    <tr>
+                      <td colSpan={3} className="px-6 py-4 text-right">Total:</td>
+                      <td className="px-6 py-4 text-red-600 print:text-black">{formatCurrency(totalPenaltyAmount)}</td>
+                      <td></td>
+                      <td className="px-6 py-4 text-gray-900 print:text-black">{formatCurrency(totalNewAmount)}</td>
+                      <td></td>
+                    </tr>
+                  </tfoot>
+                )}
               </table>
             )}
 
@@ -596,6 +634,9 @@ export default function StaffReports() {
               </table>
             )}
 
+                </>
+              );
+            })()}
           </div>
         )}
       </div>
